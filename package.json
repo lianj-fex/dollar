@@ -1,0 +1,22 @@
+{
+  "name": "@lianj/dollar2",
+  "version": "0.1.0",
+  "description": "一个工具库",
+  "main": "dist/dollar2.min.js",
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {
+    "xhr2": "^0.1.4"
+  },
+  "devDependencies": {
+    "esdoc": "^1.0.3",
+    "esdoc-standard-plugin": "^1.0.0"
+  },
+  "scripts": {
+    "doc": "esdoc && start ./docs/index.html",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}
