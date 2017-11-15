@@ -1,6 +1,7 @@
 import $each from './utils/each'
 import $reflectVal from './utils/reflect-val'
 import $extend from './utils/extend'
+import $mix from './utils/mix'
 import $serialize from './utils/serialize';
 import $unserialize from './utils/unserialize';
 /*import $retry from './utils/retry';
@@ -108,6 +109,24 @@ class Request extends EventEmitter {
     return this.transport(await this.prepare(args.length ? this.getConfig(...args) : {}))
   }
   async transport(options) {
+
+    if (global.location && !options.url) {
+      options.url = global.location.pathname;
+      options.query = $mix($unserialize(global.location.search.replace('?', '')), options.query);
+    }
+    if (typeof options.url === 'function') {
+      options.url = options.url(options.params);
+    }
+    options.queryString = $serialize(options.query);
+    if (typeof options.headers === 'function') {
+      options.headers = options.headers(options);
+    }
+
+    if (typeof options.output === 'string') {
+      const outputStr = options.output
+      options.output = (xhr) => { return $reflectVal(xhr, outputStr) }
+    }
+
     // 创建xhr对象
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
@@ -226,23 +245,6 @@ class Request extends EventEmitter {
   // 发送前options的处理方法
   async prepare(options) {
     options = Object.assign({}, this.options, options)
-    if (global.location && !options.url) {
-      options.url = global.location.pathname;
-      options.query = $.mix($unserialize(global.location.search.replace('?', '')), options.query);
-    }
-    if (typeof options.url === 'function') {
-      options.url = options.url(options.params);
-    }
-    options.queryString = $serialize(options.query);
-    if (typeof options.headers === 'function') {
-      options.headers = options.headers(options);
-    }
-
-    if (typeof options.output === 'string') {
-      const outputStr = options.output
-      options.output = (xhr) => { return $reflectVal(xhr, outputStr) }
-    }
-
     return options;
 
   }
@@ -268,14 +270,8 @@ class Request extends EventEmitter {
     return 'reject';
   }
 
-  static send(method, ...args) {
-    const url = args[0];
-    if (typeof url === 'string') {
-      args.shift();
-      return (new this(url)).send(method, ...args);
-    } else {
-      return (new this()).send(method, ...args)
-    }
+  static send(...args) {
+    return new this(...args)
   }
 }
 
@@ -283,6 +279,6 @@ methods.forEach((method) => {
   Request[method] = function(...args){
     return this.send(method, ...args)
   };
-})
+});
 
 export default Request;

@@ -22,7 +22,7 @@ function getAction(event) {
 
 async function doAction(event, args) {
   const ontype = `on${event.type}`;
-  const actFn = getAction.call(this);
+  const actFn = getAction.call(this, event);
   if (!event.isDefaultPrevented()) {
     if (ontype && actFn && this.window !== this) {
       event.actionReturns = (await actFn.apply(this, args)) || event.result;
@@ -162,7 +162,7 @@ export default class Event {
     if (!Array.isArray(args)) {
       args = [args];
     }
-    const event = Event(eventType);
+    const event = new Event(eventType);
     event.target = target;
     event.currentTarget = target;
     await doTrigger.call(target, event, args);
@@ -183,7 +183,7 @@ export default class Event {
     if (!Array.isArray(args)) {
       args = [args];
     }
-    const event = Event(eventType);
+    const event = new Event(eventType);
     event.target = target;
     event.currentTarget = target;
     await doTrigger.call(target, event, args);
