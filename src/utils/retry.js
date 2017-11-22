@@ -7,14 +7,18 @@ export default function retry(s, retune, context) {
       return await s.call(this, ...args);
     } catch(e) {
       returnTime = returnTime + 1;
-      await retune.call(this, e, returnTime, ...args);
+      try {
+        await retune.call(this, e, returnTime, ...args);
+      } catch(e1) {
+        throw e;
+      }
       return await callee.call(this, ...args);
     }
   }
 
   if (typeof retune === 'number') {
     const tmpRetune = retune;
-    retune = (e, returnTime) => new Promise((resolve, reject) => { returnTime >= tmpRetune ? reject(e) : resolve(); });
+    retune = (e, returnTime) => { if (returnTime >= tmpRetune) { throw new Error('retry too many time') } };
   }
 
   return async function (...args) {
