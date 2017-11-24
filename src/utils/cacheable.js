@@ -18,7 +18,7 @@ export default function cacheable(fn, options) {
   }
   if ($is(options.expires, 'number') || $is(options.expires, 'date')) {
     const tmpExpires = options.expires;
-    options.expires = async (result) => { await result; await $delay(tmpExpires); };
+    options.expires = async (result) => { await result.catch(() => {}); await $delay(tmpExpires); };
   }
   return function fnResult(...args) {
     const context = options.context || this;
