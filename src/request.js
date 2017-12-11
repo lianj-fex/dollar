@@ -4,6 +4,7 @@ import $extend from './utils/extend'
 import $mix from './utils/mix'
 import $serialize from './utils/serialize';
 import $unserialize from './utils/unserialize';
+import $isPlainObject from './utils/is-plain-object';
 /*import $retry from './utils/retry';
 import $cacheable from './utils/cacheable';*/
 
@@ -131,6 +132,16 @@ class Request extends EventEmitter {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       this.xhr = xhr;
+      xhr.addEventListener('readystatechange', () => {
+        if (this.readyState === 4 && this.responseType === 'json' && !xhr.responseJSON && isJSON(xhr.responseText)) {
+          const response = JSON.parse(xhr.responseText);
+          Object.defineProperty(xhr, 'response', {
+            writable: true,
+            value: response
+          });
+          xhr.responseJSON = response;
+        }
+      });
       const url = options.url + (options.queryString ? (
           (options.url.includes('?') ? '&' : '?') + options.queryString) : ''
         );
@@ -230,7 +241,7 @@ class Request extends EventEmitter {
     if (output) {
       methodAndOutput.output = output
     }
-    if (sendData.method || sendData.url || sendData.query || sendData.body) {
+    if ($isPlainObject(sendData) && (sendData.method || sendData.url || sendData.query || sendData.body)) {
       tmpOptions = $extend({}, sendData, methodAndOutput)
     } else {
       tmpOptions = $extend({

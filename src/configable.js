@@ -14,6 +14,19 @@ class Configable {
     }
     return this.prototype.options;
   }
+  static set options(val) {
+    this.prototype.options = val;
+  }
+  /**
+   * 类的默认配置的配置方法
+   * @param options
+   */
+
+  static get config() {
+    return (...options) => {
+      return $mix(this.options, ...options);
+    }
+  }
 
   /**
    * 配置实例的配置方法
@@ -30,14 +43,6 @@ class Configable {
     return this.options;
   }
 
-  /**
-   * 类的默认配置的配置方法
-   * @param options
-   */
-
-  static config(...options) {
-    return $mix(this.options, ...options);
-  }
 }
 Configable.prototype.options = {};
 export default Configable;
