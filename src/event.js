@@ -12,7 +12,7 @@ function getHandlerMap() {
   return handlerMap;
 }
 function getParent() {
-  if (this.getHandlerMap) return this.getHandlerMap();
+  if (this.getParent) return this.getParent();
   return this.$parent || this.parentNode;
 }
 function getAction(event) {
@@ -20,35 +20,42 @@ function getAction(event) {
   return this[`_${event.type}`] || this[event.type];
 }
 
-async function doAction(event, args) {
-  const ontype = `on${event.type}`;
-  const actFn = getAction.call(this, event);
-  if (!event.isDefaultPrevented()) {
-    if (ontype && actFn && this.window !== this) {
-      event.actionReturns = (await actFn.apply(this, args)) || event.result;
-    }
+function wrapEvent(event, fn) {
+  return function(...args) {
+    const oldEvent = this.$event;
+    this.$event = event;
+    let result = fn.call(this, ...args);
+    this.$event = oldEvent;
+    return result
   }
-  return event.actionReturns;
 }
 
-async function doTrigger(event, args) {
+async function invokeAction(event, args) {
   const ontype = `on${event.type}`;
-  const oldEvent = this.$event;
-  const handlerMap = getHandlerMap.call(this);
+  let actFn = getAction.call(this, event);
+  if (!event.isDefaultPrevented() && ontype && actFn && this.window !== this) {
+    event.actionResult = (await wrapEvent(event, actFn).apply(this, args)) || event.result;
+  }
+  return event.actionResult;
+}
+
+async function invokeHandler(event, args) {
+  const ontype = `on${event.type}`;
+  let target = event.currentTarget;
+  const handlerMap = getHandlerMap.call(target);
   let handlerList = handlerMap[event.type];
   if (handlerList) {
     handlerList = handlerList.length > 1 ? [...handlerList] : handlerList;
-    this.$event = event;
     let prevent = false;
     for (let i = 0, l = handlerList.length; i < l; i++) {
       let handler = handlerList[i];
       if (typeof handler === 'function') {
         handler = {
           type: event.type,
-          handler
+          handler: wrapEvent(event, handler)
         };
       }
-      const result = await handler.handler.apply(this, args);
+      const result = await handler.handler.apply(target, args);
       event.result = result;
       if (result === false) {
         prevent = true;
@@ -61,34 +68,80 @@ async function doTrigger(event, args) {
       event.preventDefault();
     }
   }
-  if (ontype && this[ontype] && this[ontype].apply) {
-    event.result = this[ontype].call(this, event, ...args);
+  if (ontype && target[ontype] && target[ontype].apply) {
+    event.result = target[ontype].call(target, event, ...args);
     if (event.result === false) {
       event.preventDefault();
     }
   }
-  this.$event = oldEvent;
+}
+
+async function displatch(eventType, args) {
+  if (!args) {
+    args = [];
+  }
+  if (!Array.isArray(args)) {
+    args = [args];
+  }
+  const event = new Event(eventType);
+  event.target = this;
+  event.currentTarget = this;
+
+  do {
+    await invokeHandler.call(event.currentTarget, event, args);
+  } while(event.bubbles && !event.isPropagationStopped() && (event.currentTarget = getParent.call(event.currentTarget)));
+
+  if (!event.onlyHandlers) {
+    invokeAction.call(target, event, args)
+  }
 }
 
 
+const defaultEventInit = {
+  bubbles: false,
+  cancelable: false,
+  onlyHandlers: false,
+  async: false
+}
 
 export default class Event {
   type = undefined;
-  constructor(type) {
+  constructor(type, eventInit) {
     if (!(this instanceof Event)) {
-      return new Event(type);
+      return new Event(type, eventInit);
+    }
+    if (typeof type === 'string') {
+      eventInit = {
+        type,
+        ...defaultEventInit,
+        ...eventInit
+      }
+    } else {
+      eventInit = {
+        ...defaultEventInit,
+        ...eventInit
+      }
     }
     this[isDP] = false;
     this[isIPS] = false;
     this[isPS] = false;
-    this.type = type;
+    this.target = null;
+    this.currentTarget = null;
+    this.timeStamp = Date.now();
+    this.cancelable = eventInit.cancelable;
+    this.bubbles = eventInit.bubbles;
+    this.type = eventInit.type;
   }
   isImmediatePropagationStopped() {
     return this[isIPS];
   }
   stopImmediatePropagation() {
     this[isIPS] = true;
-    this[isPS] = true;
+    if (this.cancelable) {
+      this[isDP] = true;
+    } else {
+      console.warn('Only cancelable event can be cancel')
+    }
   }
   stopPropagation() {
     this[isPS] = true;
@@ -97,7 +150,11 @@ export default class Event {
     return this[isPS];
   }
   preventDefault() {
-    this[isDP] = true;
+    if (this.cancelable) {
+      this[isDP] = true;
+    } else {
+      console.warn('Only cancelable event can be cancel')
+    }
   }
   isDefaultPrevented() {
     return this[isDP];
@@ -155,40 +212,11 @@ export default class Event {
     }
   }
 
-  static async dispatch(target, eventType, args, onlyHandlers) {
-    if (!args) {
-      args = [];
-    }
-    if (!Array.isArray(args)) {
-      args = [args];
-    }
-    const event = new Event(eventType);
-    event.target = target;
-    event.currentTarget = target;
-    await doTrigger.call(target, event, args);
-
-    const parent = getParent.call(target);
-    if (parent && !event.isPropagationStopped()) {
-      event.currentTarget = parent;
-      await doTrigger.call(parent, event, args);
-    }
-
-    return onlyHandlers ? undefined : doAction.call(target, event, args);
+  static async trigger(target, eventType, args) {
+    return (await displatch.call(this, ...args)).actionResult
   }
 
-  static async trigger(target, eventType, args, onlyHandlers) {
-    if (!args) {
-      args = [];
-    }
-    if (!Array.isArray(args)) {
-      args = [args];
-    }
-    const event = new Event(eventType);
-    event.target = target;
-    event.currentTarget = target;
-    await doTrigger.call(target, event, args);
-
-    return onlyHandlers ? undefined : doAction.call(target, event, args);
-
+  static async dispatch(...args) {
+    return (await displatch.call(this, ...args)).result
   }
 };
