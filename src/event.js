@@ -30,53 +30,96 @@ function wrapEvent(event, fn) {
   }
 }
 
-async function invokeAction(event, args) {
-  const ontype = `on${event.type}`;
-  let actFn = getAction.call(this, event);
-  if (!event.isDefaultPrevented() && ontype && actFn && this.window !== this) {
-    event.actionResult = (await wrapEvent(event, actFn).apply(this, args)) || event.result;
+async function invokeAsyncAction(event, args) {
+  if (event.result === false) {
+    event.preventDefault();
   }
-  return event.actionResult;
+  let actionResult;
+  if (!event.onlyHandlers) {
+    const ontype = `on${event.type}`;
+    let actFn = getAction.call(event.target, event);
+    if (!event.isDefaultPrevented() && ontype && actFn) {
+      actionResult = await wrapEvent(event, actFn).apply(event.target, args);
+    }
+  }
+  return event.actionResult = actionResult || event.result
+}
+function invokeAction(event, args) {
+  if (event.result === false) {
+    event.preventDefault();
+  }
+  let actionResult;
+  if (!event.onlyHandlers) {
+    const ontype = `on${event.type}`;
+    let actFn = getAction.call(event.target, event);
+    if (!event.isDefaultPrevented() && ontype && actFn) {
+      actionResult = wrapEvent(event, actFn).apply(event.target, args);
+    }
+  }
+  return event.actionResult = actionResult || event.result
 }
 
-async function invokeHandler(event, args) {
-  const ontype = `on${event.type}`;
-  let target = event.currentTarget;
-  const handlerMap = getHandlerMap.call(target);
-  let handlerList = handlerMap[event.type];
-  if (handlerList) {
-    handlerList = handlerList.length > 1 ? [...handlerList] : handlerList;
-    let prevent = false;
-    for (let i = 0, l = handlerList.length; i < l; i++) {
-      let handler = handlerList[i];
-      if (typeof handler === 'function') {
-        handler = {
-          type: event.type,
-          handler: wrapEvent(event, handler)
-        };
-      }
-      const result = await handler.handler.apply(target, args);
-      event.result = result;
-      if (result === false) {
-        prevent = true;
-      }
-      if (event.isImmediatePropagationStopped()) {
-        break;
+async function invokeAsyncHandler(event, args) {
+  do {
+    const target = event.currentTarget;
+    const handlerMap = getHandlerMap.call(target);
+    let handlerList = handlerMap[event.type];
+    if (handlerList) {
+      handlerList = handlerList.length > 1 ? [...handlerList] : handlerList;
+      for (let i = 0, l = handlerList.length; i < l; i++) {
+        let handler = handlerList[i];
+        if (typeof handler === 'function') {
+          handler = {
+            type: event.type,
+            handler: wrapEvent(event, handler)
+          };
+        }
+        event.result = await handler.handler.apply(target, args);
+        // 异步与非异步的区别
+        if (event.isImmediatePropagationStopped()) {
+          break;
+        }
       }
     }
-    if (prevent) {
-      event.preventDefault();
+    const ontype = `on${event.type}`;
+    if (ontype && target[ontype] && target[ontype].apply) {
+      event.result = await wrapEvent(event, target[ontype]).apply(target, event, args);
+      // 异步与非异步的区别
     }
-  }
-  if (ontype && target[ontype] && target[ontype].apply) {
-    event.result = target[ontype].call(target, event, ...args);
-    if (event.result === false) {
-      event.preventDefault();
-    }
-  }
+  } while(event.bubbles && !event.isPropagationStopped() && (event.currentTarget = getParent.call(event.currentTarget)))
+  return event.result;
 }
 
-async function displatch(eventType, args) {
+function invokeHandler(event, args) {
+  do {
+    let target = event.currentTarget;
+    const handlerMap = getHandlerMap.call(target);
+    let handlerList = handlerMap[event.type];
+    if (handlerList) {
+      handlerList = handlerList.length > 1 ? [...handlerList] : handlerList;
+      for (let i = 0, l = handlerList.length; i < l; i++) {
+        let handler = handlerList[i];
+        if (typeof handler === 'function') {
+          handler = {
+            type: event.type,
+            handler: wrapEvent(event, handler)
+          };
+        }
+        event.result = handler.handler.apply(target, args);
+        if (event.isImmediatePropagationStopped()) {
+          break;
+        }
+      }
+    }
+    const ontype = `on${event.type}`;
+    if (ontype && target[ontype] && target[ontype].apply) {
+      event.result = wrapEvent(event, target[ontype]).apply(target, event, args);
+    }
+  } while(event.bubbles && !event.isPropagationStopped() && (event.currentTarget = getParent.call(event.currentTarget)))
+  return event.result;
+}
+
+function dispatch(eventType, args, proxy) {
   if (!args) {
     args = [];
   }
@@ -87,20 +130,28 @@ async function displatch(eventType, args) {
   event.target = this;
   event.currentTarget = this;
 
-  do {
-    await invokeHandler.call(event.currentTarget, event, args);
-  } while(event.bubbles && !event.isPropagationStopped() && (event.currentTarget = getParent.call(event.currentTarget)));
-
-  if (!event.onlyHandlers) {
-    invokeAction.call(target, event, args)
+  if (event.async) {
+    return invokeAsyncHandler(event, args).then(() => {
+      return invokeAsyncAction(event, args)
+    }).then(() => {
+      return event[proxy]
+    })
+  } else {
+    invokeHandler(event, args);
+    invokeAction(event, args);
+    return event[proxy];
   }
 }
 
 
 const defaultEventInit = {
+  // 是否冒泡
   bubbles: false,
+  // 是否可以取消
   cancelable: false,
+  // 只触发handler而不触发默认行为
   onlyHandlers: false,
+  // 允许handler异步，handler会依次执行
   async: false
 }
 
@@ -212,11 +263,11 @@ export default class Event {
     }
   }
 
-  static async trigger(target, eventType, args) {
-    return (await displatch.call(this, ...args)).actionResult
+  static trigger(...args) {
+    return dispatch.call(this, ...args, 'actionResult');
   }
 
-  static async dispatch(...args) {
-    return (await displatch.call(this, ...args)).result
+  static dispatch(...args) {
+    return dispatch.call(this, ...args, 'result');
   }
 };
