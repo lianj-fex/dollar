@@ -74,7 +74,10 @@ async function invokeAsyncHandler(event, args) {
             handler: wrapEvent(event, handler)
           };
         }
-        event.result = await handler.handler.apply(target, args);
+        const result = await handler.handler.call(target, event, ...args);
+        if (result !== undefined) {
+          event.result = result;
+        }
         // 异步与非异步的区别
         if (event.isImmediatePropagationStopped()) {
           break;
@@ -83,7 +86,7 @@ async function invokeAsyncHandler(event, args) {
     }
     const ontype = `on${event.type}`;
     if (ontype && target[ontype] && target[ontype].apply) {
-      event.result = await wrapEvent(event, target[ontype]).apply(target, event, args);
+      event.result = await wrapEvent(event, target[ontype]).call(target, event, ...args);
       // 异步与非异步的区别
     }
   } while(event.bubbles && !event.isPropagationStopped() && (event.currentTarget = getParent.call(event.currentTarget)))
@@ -105,7 +108,10 @@ function invokeHandler(event, args) {
             handler: wrapEvent(event, handler)
           };
         }
-        event.result = handler.handler.apply(target, args);
+        const result = handler.handler.call(target, event, ...args);
+        if (result !== undefined) {
+          event.result = result;
+        }
         if (event.isImmediatePropagationStopped()) {
           break;
         }
@@ -113,22 +119,24 @@ function invokeHandler(event, args) {
     }
     const ontype = `on${event.type}`;
     if (ontype && target[ontype] && target[ontype].apply) {
-      event.result = wrapEvent(event, target[ontype]).apply(target, event, args);
+      event.result = wrapEvent(event, target[ontype]).call(target, event, ...args);
     }
   } while(event.bubbles && !event.isPropagationStopped() && (event.currentTarget = getParent.call(event.currentTarget)))
   return event.result;
 }
 
-function dispatch(eventType, args, proxy) {
+function dispatch(proxy, target, event, args) {
   if (!args) {
     args = [];
   }
   if (!Array.isArray(args)) {
     args = [args];
   }
-  const event = new Event(eventType);
-  event.target = this;
-  event.currentTarget = this;
+  if (!(event instanceof Event)) {
+    event = new Event(event);
+  }
+  event.target = target;
+  event.currentTarget = target;
 
   if (event.async) {
     return invokeAsyncHandler(event, args).then(() => {
@@ -148,7 +156,7 @@ const defaultEventInit = {
   // 是否冒泡
   bubbles: false,
   // 是否可以取消
-  cancelable: false,
+  cancelable: true,
   // 只触发handler而不触发默认行为
   onlyHandlers: false,
   // 允许handler异步，handler会依次执行
@@ -170,7 +178,7 @@ export default class Event {
     } else {
       eventInit = {
         ...defaultEventInit,
-        ...eventInit
+        ...type
       }
     }
     this[isDP] = false;
@@ -179,6 +187,7 @@ export default class Event {
     this.target = null;
     this.currentTarget = null;
     this.timeStamp = Date.now();
+    this.result = eventInit.result;
     this.cancelable = eventInit.cancelable;
     this.bubbles = eventInit.bubbles;
     this.type = eventInit.type;
@@ -264,10 +273,10 @@ export default class Event {
   }
 
   static trigger(...args) {
-    return dispatch.call(this, ...args, 'actionResult');
+    return dispatch('actionResult', ...args);
   }
 
   static dispatch(...args) {
-    return dispatch.call(this, ...args, 'result');
+    return dispatch('result', ...args);
   }
 };
