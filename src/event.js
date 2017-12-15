@@ -185,6 +185,7 @@ export default class Event {
     this[isIPS] = false;
     this[isPS] = false;
     this.target = null;
+    this.originalEvent = eventInit.originalEvent;
     this.currentTarget = null;
     this.timeStamp = Date.now();
     this.result = eventInit.result;
@@ -198,12 +199,18 @@ export default class Event {
   stopImmediatePropagation() {
     this[isIPS] = true;
     if (this.cancelable) {
+      if (this.originalEvent) {
+        this.originalEvent.stopImmediatePropagation()
+      }
       this[isDP] = true;
     } else {
       console.warn('Only cancelable event can be cancel')
     }
   }
   stopPropagation() {
+    if (this.originalEvent) {
+      this.originalEvent.stopPropagation()
+    }
     this[isPS] = true;
   }
   isPropagationStopped() {
@@ -211,6 +218,9 @@ export default class Event {
   }
   preventDefault() {
     if (this.cancelable) {
+      if (this.originalEvent) {
+        this.originalEvent.preventDefault()
+      }
       this[isDP] = true;
     } else {
       console.warn('Only cancelable event can be cancel')
