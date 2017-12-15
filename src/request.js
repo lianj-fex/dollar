@@ -104,7 +104,9 @@ class Request extends EventEmitter {
   }
 
   then(...args) {
-    return this.transport(this.options).then(...args)
+    return this.prepare(this.options).then((sendOptions) => {
+      return this.transport(sendOptions);
+    }).then(...args)
   }
   async send(...args) {
     return this.transport(await this.prepare(args.length ? this.getConfig(...args) : {}))
