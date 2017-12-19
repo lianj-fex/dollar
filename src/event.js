@@ -3,6 +3,7 @@ import $data from './data';
 const isIPS = Symbol();
 const isDP = Symbol();
 const isPS = Symbol();
+const PR = Symbol();
 
 function getHandlerMap() {
   if (this.getHandlerMap) return this.getHandlerMap();
@@ -39,7 +40,12 @@ async function invokeAsyncAction(event, args) {
     const ontype = `on${event.type}`;
     let actFn = getAction.call(event.target, event);
     if (!event.isDefaultPrevented() && ontype && actFn) {
-      actionResult = await wrapEvent(event, actFn).apply(event.target, args);
+      try {
+        actionResult = await wrapEvent(event, actFn).apply(event.target, args);
+      } catch(err) {
+        event.preventDefault(err);
+        throw err;
+      }
     }
   }
   return event.actionResult = actionResult || event.result
@@ -216,15 +222,19 @@ export default class Event {
   isPropagationStopped() {
     return this[isPS];
   }
-  preventDefault() {
+  preventDefault(reason) {
     if (this.cancelable) {
       if (this.originalEvent) {
         this.originalEvent.preventDefault()
       }
       this[isDP] = true;
+      this[PR] = reason;
     } else {
       console.warn('Only cancelable event can be cancel')
     }
+  }
+  getPreventReason() {
+    return this[PR]
   }
   isDefaultPrevented() {
     return this[isDP];
