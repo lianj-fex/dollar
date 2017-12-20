@@ -12,7 +12,7 @@ import $isArray from './is-array';
  * @param item
  * @param array
  */
-export default function(obj, key, item, array) {
+export default function setGroup(obj, key, item, array) {
   if (!(key in obj)) {
     obj[key] = array ? [item] : item;
     return;

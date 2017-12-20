@@ -5,8 +5,9 @@ import $own from './utils/own';
  */
 class Configable {
   /**
-   * 类的默认配置，可以通过config方法进行修改
-   * @returns {{}}
+   * 类的默认配置，可以通过config方法进行修改，或者直接覆盖options
+   * @ignore
+   * @returns {object}
    */
   static get options() {
     if (!$own(this.prototype, 'options')) {
@@ -14,24 +15,28 @@ class Configable {
     }
     return this.prototype.options;
   }
-  static set options(val) {
-    this.prototype.options = val;
-  }
+
   /**
-   * 类的默认配置的配置方法
-   * @param options
+   * 设置类的实例的默认配置
+   * @ignore
+   * @param options {object}
    */
-
-  static get config() {
-    return (...options) => {
-      return $mix(this.options, ...options);
-    }
+  static set options(options) {
+    this.prototype.options = options;
+  }
+  /**
+   * 配置类的实例的默认配置
+   * @param options {object} 配置的对象
+   * @returns {object} 配置后的options
+   */
+  static config(...options) {
+    return $mix(this.options, ...options);
   }
 
   /**
-   * 配置实例的配置方法
-   * @param options {Object}
-   * @returns {{}}
+   * 配置实例的配置
+   * @param options {object} 配置的对象
+   * @returns {object} 配置后的options
    */
   config(...options) {
     const configed = !!$own(this, 'options');

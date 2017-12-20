@@ -1,4 +1,4 @@
-export default function (value, complex) {
+export default function isArrayLike(value, complex) {
   return value
     && typeof value === 'object'
     && typeof value.length === 'number'

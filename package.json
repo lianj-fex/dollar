@@ -1,6 +1,6 @@
 {
   "name": "@lianj/dollar2",
-  "version": "0.2.10",
+  "version": "0.2.11",
   "description": "一个工具库",
   "main": "dist/dollar2.min.js",
   "directories": {
@@ -10,7 +10,8 @@
     "xhr2": "^0.1.4"
   },
   "devDependencies": {
-    "esdoc": "^1.0.3",
+    "esdoc": "^1.0.4",
+    "esdoc-ecmascript-proposal-plugin": "^1.0.0",
     "esdoc-standard-plugin": "^1.0.0"
   },
   "scripts": {

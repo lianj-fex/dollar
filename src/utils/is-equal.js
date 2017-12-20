@@ -79,6 +79,6 @@ function eq(a, b, aStack, bStack) {
   bStack.pop();
   return result;
 }
-export default function (a, b) {
+export default function isEqual(a, b) {
   return eq(a, b, [], []);
 }

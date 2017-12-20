@@ -1,1 +1,3 @@
-export default obj => Array.isArray(obj);
+export default function isArray(obj) {
+  return Array.isArray(obj)
+};

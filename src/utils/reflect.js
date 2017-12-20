@@ -1,6 +1,6 @@
 import $keyParse from './key-parse';
 import $int from './int';
-export default function(target, name, create) {
+export default function reflect(target, name, create) {
   const arrayKey = '!@#%';
   if (name.indexOf('[]') > -1 && name.indexOf('[]') < name.length - 2) {
     throw Error(`[] must be the last word of reflect name: ${name}`);

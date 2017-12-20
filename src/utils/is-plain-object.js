@@ -1,4 +1,4 @@
-export default function (value) {
+export default function isPlainObject(value) {
   if (!value) {
     return false;
   }

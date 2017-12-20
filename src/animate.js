@@ -5,7 +5,7 @@ const defaults = {
   easing: x => x,
   raf: global.requestAnimationFrame
 };
-export default function(fn, options) {
+export default function animate(fn, options) {
   if (typeof options === 'number') {
     options = Object.assign({}, defaults, {
       during: options

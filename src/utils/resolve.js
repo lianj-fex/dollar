@@ -1,4 +1,4 @@
-export default function (s, ...args) {
+export default function resolve(s, ...args) {
   if (typeof s === 'function') {
     return new Promise((resolve, reject) => { s(resolve, reject, ...args) });
   } else {

@@ -1,6 +1,6 @@
 import $reduce from './reduce';
 import $is from './is';
-export default function (arr, useBracket, withQuote) {
+export default function keyStringify(arr, useBracket, withQuote) {
   // eslint-disable-next-line
   if (withQuote === undefined) withQuote = true;
   return $reduce(arr, (memo, key, i) => {

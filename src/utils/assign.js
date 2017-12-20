@@ -31,7 +31,7 @@ import $isPlainObject from './is-plain-object';
  * @param options
  * @returns {*|{}}
  */
-function $assign(target, source, options) {
+export default function assign(target, source, options) {
   if (Array.isArray(target)) {
     options = source;
     source = target;
@@ -45,7 +45,7 @@ function $assign(target, source, options) {
     options.clearWhenUndefined === undefined ? true : options.clearWhenUndefined;
   const ignore = options.ignore || [];
   const ignoreExist = options.ignoreExist || false;
-  const assign = options.assign || ((obj, key, value) => { obj[key] = value });
+  const optionAssign = options.assign || ((obj, key, value) => { obj[key] = value });
   for (let i = 0; i < source.length;) {
     if (typeof source[i] === 'string') {
       source[i] = { [source[i]]: source.splice(i + 1, 1)[0] };
@@ -81,23 +81,23 @@ function $assign(target, source, options) {
             [].splice.apply(obj, [key, 0].concat([].slice.call(value)))
           } else if (value && typeof value === 'object' && deep) {
             if ($is(value, 'date')) {
-              assign(obj, key, new Date(value.valueOf()));
+              optionAssign(obj, key, new Date(value.valueOf()));
             } else if ($is(value, 'regexp')) {
-              assign(obj, key, new RegExp(value));
+              optionAssign(obj, key, new RegExp(value));
             } else if (value.nodeName) {
-              assign(obj, key, cloneElement ? value.cloneNode(true) : value);
+              optionAssign(obj, key, cloneElement ? value.cloneNode(true) : value);
             } else if ($isQueryElement(value)) {
-              assign(obj, key, cloneElement ? value.clone() : value);
+              optionAssign(obj, key, cloneElement ? value.clone() : value);
             } else if ($isArrayLike(value)) {
-              assign(obj, key, arrDeep ? $assign.call(this, [], [obj[key], value]) : value);
+              optionAssign(obj, key, arrDeep ? $assign.call(this, [], [obj[key], value]) : value);
             } else {
-              assign(obj, key, $isPlainObject(obj[key]) ?
+              optionAssign(obj, key, $isPlainObject(obj[key]) ?
                 $assign.call(this, {}, [obj[key], value], options) :
                 $assign.call(this, {}, [value], options)
               );
             }
           } else if (value !== undefined) {
-            assign(obj, key, value);
+            optionAssign(obj, key, value);
           }
         }
       });
@@ -105,4 +105,3 @@ function $assign(target, source, options) {
   });
   return target;
 }
-export default $assign

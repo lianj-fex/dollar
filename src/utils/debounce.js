@@ -1,4 +1,4 @@
-export default function(func, wait, immediate) {
+export default function (func, wait, immediate) {
   let timeout;
   let result;
   return function (...args) {

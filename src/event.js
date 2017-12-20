@@ -169,6 +169,9 @@ const defaultEventInit = {
   async: false
 }
 
+/**
+ * 事件
+ */
 export default class Event {
   type = undefined;
   constructor(type, eventInit) {
@@ -245,7 +248,6 @@ export default class Event {
    * @param target 绑定的目标
    * @param handlerObj {string} 绑定事件的类型
    * @param fct {function} 绑定的处理器
-   * @method on
    */
 
   static add(target, handlerObj, fct) {
@@ -265,8 +267,6 @@ export default class Event {
    * @param target 绑定的目标
    * @param handlerObj {string} 解绑事件的类型
    * @param [fct] {function} 解绑事件的处理器
-   * @async
-   * @method off
    */
 
   static remove(target, handlerObj, fct) {

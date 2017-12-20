@@ -1,5 +1,5 @@
 import $assign from './assign';
-export default function (...args) {
+export default function mix(...args) {
   const target = args.length > 1 ? args.shift() : this;
   return $assign(target, args, {
     deep: true,

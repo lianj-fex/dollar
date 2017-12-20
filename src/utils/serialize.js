@@ -35,8 +35,8 @@ function assume(i, value, assignment, add) {
  * {boolean} [encode] 是否进行编码, 默认true
  * @returns {Object}
  */
-function callee(obj, options) {
-  options = $extend({}, callee.defaults, options);
+function serialize(obj, options) {
+  options = $extend({}, serialize.defaults, options);
   const { separator, assignment } = options;
   let { join, flatten, encode } = options;
   if (typeof join === 'string') {
@@ -70,7 +70,7 @@ function callee(obj, options) {
   }
   if (typeof obj === 'string' && obj === '' || obj == null) return '';
   else if ($isArrayLike(obj)) {
-    return callee.call(this, $.serializeNodes(obj, join), separator, assignment, join, encode);
+    return serialize.call(this, $.serializeNodes(obj, join), separator, assignment, join, encode);
   } else if (typeof obj === 'object') {
     $forEach(flatten ? flatten(obj) : obj, (value, i) => {
       assume(i, value, assignment, add);
@@ -81,7 +81,7 @@ function callee(obj, options) {
   return s.join(separator);
 }
 
-callee.defaults = {
+serialize.defaults = {
   separator: '&',
   assignment: '=',
   join: ',',
@@ -89,4 +89,4 @@ callee.defaults = {
   flatten: true
 };
 
-export default callee;
+export default serialize;

@@ -1,4 +1,4 @@
-export default function(func, wait) {
+export default function throttle(func, wait) {
   let context;
   let args;
   let timeout;

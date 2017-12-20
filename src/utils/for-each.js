@@ -6,7 +6,7 @@ import $hasOwn from './has-own';
  * @param iterator
  * @returns {*}
  */
-export default function (obj, iterator) {
+export default function forEach(obj, iterator) {
   let i;
   if ($isArrayLike(obj)) {
     for (i = 0; i < obj.length; i++) {

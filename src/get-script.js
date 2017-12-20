@@ -1,4 +1,4 @@
-export default function (url) {
+export default function getScript(url) {
   return new Promise((resolve, reject) => {
     const script = document.createElement('script');
     const head = document.querySelector('head');

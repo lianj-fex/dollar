@@ -1,5 +1,5 @@
 const dataMap = new WeakMap();
-export default (obj, keys, value) => {
+export default function data(obj, keys, value) {
   let dataItem = dataMap.get(obj);
   const hasData = dataItem;
   dataItem = dataItem || {};

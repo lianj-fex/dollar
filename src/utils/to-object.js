@@ -1,5 +1,5 @@
 const rword = /[^, |]+/g;
-export default function(array, valFn, keyFn) {
+export default function toObject(array, valFn, keyFn) {
   if (typeof array === 'string') {
     array = array.match(rword) || [];
   }

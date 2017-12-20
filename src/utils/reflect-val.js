@@ -1,5 +1,5 @@
 import $reflect from './reflect';
-export default function (target, name, defaultVal) {
+export default function reflectVal(target, name, defaultVal) {
   let ret;
   try {
     const ref = $reflect(target, name, false);

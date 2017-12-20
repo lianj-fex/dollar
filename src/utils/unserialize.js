@@ -43,9 +43,9 @@ function assume(value) {
  * {String} [splitter] 分隔符，默认【,】
  * @returns {Object|Array}
  */
-function callee(str, options) {
+function unserialize(str, options) {
   if (str === '' || str === undefined || str === null) return {};
-  options = $extend({}, callee.defaults, options);
+  options = $extend({}, unserialize.defaults, options);
   const { separator, assignment, splitter } = options;
   str = str.replace(r, '');
   const group = str.split(separator);
@@ -78,9 +78,9 @@ function callee(str, options) {
   });
   return $mix({}, result);
 }
-callee.defaults = {
+unserialize.defaults = {
   separator: '&',
   assignment: '=',
   splitter: ','
 };
-export default callee
+export default unserialize

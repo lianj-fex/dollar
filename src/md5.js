@@ -98,7 +98,7 @@ function MD5_transfrom( bytes, digest ) {
   }
 }
 
-export default function (bytes) {
+export default function md5(bytes) {
   if (typeof bytes === 'string') {
     if (!TextEncoder) {
       throw 'depency TextEncoder';
