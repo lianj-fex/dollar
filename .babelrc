@@ -1,0 +1,17 @@
+{
+  "presets": [
+    ["env", {
+      "target": {
+        "ie": 10,
+        "node": true,
+        "uglify": false
+      },
+      "useBuiltIns": true
+    }],
+    "flow",
+    "stage-1"
+  ],
+  "plugins": [
+    "transform-runtime"
+  ]
+}

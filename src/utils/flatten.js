@@ -3,6 +3,15 @@ import $isArray from './is-array';
 import $setGroup from './set-group';
 import $isPlainObject from './is-plain-object';
 import $forEach from './for-each';
+/**
+ * 深度平坦化对象，转换为键值对应的新对象
+ * @param obj 需要平坦化的对象
+ * @param combine
+ * @param useBracket
+ * @param withQuote
+ * @param arrAddBracket
+ * @returns {{}}
+ */
 export default function (obj, combine, useBracket, withQuote, arrAddBracket) {
   const a = {};
   function s(name, obj, b, p) {

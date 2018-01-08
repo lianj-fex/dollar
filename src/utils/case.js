@@ -16,9 +16,9 @@ function funderscore(m, w) {
 
 /**
  * 将字符串转换为驼峰形式
- * @param string
- * @param upper
- * @returns {string}
+ * @param {string} string 输入的字符串
+ * @param {boolean} upper 是否首字母大写
+ * @returns {string} 输出的字符串
  */
 export function camelCase(string, upper) {
   const result = string.replace(rmsPrefix, 'ms-').replace(rdashAlpha, fcamelCase);
@@ -27,8 +27,8 @@ export function camelCase(string, upper) {
 
 /**
  * 将字符串转换为大驼峰形式
- * @param string
- * @returns {string}
+ * @param {string} string 输入的字符串
+ * @returns {string} 输出的字符串
  */
 
 export function upperCamelCase(string) {
@@ -37,8 +37,8 @@ export function upperCamelCase(string) {
 
 /**
  * 将字符串转换为横杠联结形式
- * @param string
- * @returns {string}
+ * @param {string} string 输入的字符串
+ * @returns {string} 输出的字符串
  */
 export function hyphen(string) {
   return string.replace(rhyphen, fhyphen);
@@ -46,8 +46,8 @@ export function hyphen(string) {
 
 /**
  * 将字符串转换为下划线联结形式
- * @param string
- * @returns {string}
+ * @param {string} string 输入的字符串
+ * @returns {string} 输出的字符串
  */
 export function underscore(string) {
   return string.replace(rhyphen, funderscore);

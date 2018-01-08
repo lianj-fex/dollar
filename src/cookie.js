@@ -46,23 +46,37 @@ function testAndSet(valueHash, isNew) {
 
 const isBrowser = global.window;
 
+/**
+ * 读写cookie的类
+ * @example
+ * // --- 浏览器调用 ---
+ * const cookie = new Cookie({ context: { document: window.document } })
+ * // 获取所有cookie
+ * cookie.get()
+ *
+ * // --- 服务端调用 ---
+ * // request 和 response 均以express为例
+ * const cookie = new Cookie({ context: {request, response} })
+ * // 获取所有cookie
+ * cookie.get()
+ */
 export default class Cookie extends EventEmitter {
+  /**
+   * @ignore
+   */
   static mixOptions = isBrowser ? {
     context: global,
-    getCookies(options) {
+    getCookies() {
       return $unserialize(this.options.context.document.cookie, cookieSerializeOptions);
     },
     setCookie(name, item, options) {
-      if (options.expires instanceof Date) {
-        options.expiresString = options.expiresString || options.expires.toGMTString();
-      }
       this.options.context.document.cookie =
         `${
           $serialize({ [name]: item }, cookieSerializeOptions)
           }; ${
           $serialize({
             path: options.path,
-            expires: options.expiresString,
+            expires: options.expires,
             domain: options.domain
           }, cookieSerializeConfigOptions)
           }`;
@@ -101,6 +115,11 @@ export default class Cookie extends EventEmitter {
     this.config(options);
   }
 
+  /**
+   * 获取cookie
+   * @param {string} [key] cookie的键 也可以为空，为空时，获取整个cookie
+   * @returns {*}
+   */
   get(key) {
     // 先备份一下，以免被误改
     const list = this.options.getCookies.call(this, this.options);
@@ -109,49 +128,63 @@ export default class Cookie extends EventEmitter {
     }
     return list;
   }
-
-  set(hash, value, options) {
-    let key;
+  /**
+   * 设置cookie
+   * @param {string} [key] cookie的键，可选，当key不传递时，value则为键值对应的对象
+   * @param {string} value cookie的值
+   * @param {object} [options] 设置cookie的options
+   * @param {Date|string|number} [options.expires] cookie的超时时间<br>
+   *   number 的情况，则会从当前时间计算超时时间<br>
+   *   date 类型，则会转换为UTCString
+   * @param {string} [options.path] cookie的作用路径
+   * @param {string} [options.domain] cookie的作用域名
+   * @returns {*}
+   * @example
+   *  // 设置cookie，30秒后超时
+   *  cookie.set('my-cookie', 1, { expires: 30000 });
+   *  // 也可以批量设置
+   *  cookie.set({
+   *    'my-cookie1': 1,
+   *    'my-cookie2': 2
+   *  }, { expires: 30000 })
+   */
+  set(key, value, options) {
+    let hash;
     let isNew = true;
-    // eslint-disable-next-line
-    options = options || {
-        path: '/'
-      };
-    if (typeof hash === 'string') {
-      key = hash;
+    if (typeof key !== 'string') {
+      options = value;
+      hash = key;
+    } else {
       // eslint-disable-next-line
       hash = {};
       hash[key] = value;
       isNew = value === undefined || value === null;
     }
-    if ('expires' in hash) {
-      options.expires = hash.expires;
-      delete hash.expires;
+    // eslint-disable-next-line
+    options = $mix({
+      path: '/'
+    }, options);
+    if (typeof options.expires === 'number') {
+      options.expires = new Date(Date.now() + options.expires);
     }
-    if ('path' in hash) {
-      options.path = hash.path;
-      delete hash.path;
-    }
-    if ('domain' in hash) {
-      options.domain = hash.domain;
-      delete hash.domain;
-    }
-    if ('timeout' in hash) {
-      options.timeout = hash.timeout;
-      delete hash.timeout;
-    }
-    if (options.expires === undefined && options.timeout !== undefined) {
-      options.expires = new Date(Date.now() + options.timeout);
+    if (options.expires instanceof Date) {
+      options.expires = options.expires.toGMTString();
     }
     const result = testAndSet.call(this, hash, isNew);
     if (isChange(result)) {
-      // 延迟渲染，以免阻塞
       $forEach(result[0], (item, name) => {
         this.options.setCookie.call(this, name, item, options);
       });
     }
   }
 
+  /**
+   * 清除cookie
+   * @param {string|string[]} keys 需要清除的cookie，可以是字符串的数组
+   * @returns {*}
+   * @example
+   *  cookie.remove(['my-cookie1', 'my-cookie2'])
+   */
   remove(keys) {
     if (typeof keys === 'string') {
       keys = [keys];

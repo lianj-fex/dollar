@@ -40,13 +40,13 @@ import $extend from '../utils/extend';
 import $each from '../utils/each';
 import Configable from '../configable';
 
-const emojiList = require('./emoji-list.json').reduce((memo, item) => {
-  memo[item] = {
-    char: item,
-    alias: []
+const emojiList = require('./emoji-list.json');
+Object.keys(emojiList).forEach((key) => {
+  emojiList[key] = {
+    char: key,
+    alias: emojiList[key]
   };
-  return memo;
-}, {});
+});
 
 
 function detect () {
@@ -96,36 +96,31 @@ function createRegexp(list) {
 }
 
 
-
-export default class Emoji extends Configable {
+class Emoji extends Configable {
   static mixOptions = {
-    alias: {},
-    classes: '',
     // 需要转换的列表
-    charList: {},
+    charList: emojiList,
     imgType: 'png',
     basePath: {
-      png: '/img/png/'
+      png: './img/emoji/png/'
     },
-    parseImgUrl(emoji, options){
-      const type = options.imgType;
-      let base = options.basePath;
+    isParse() {
+      return !detect();
+    },
+    parseImgUrl(emoji){
+      const type = emoji.imgType;
+      let base = emoji.basePath;
       base = typeof base === 'string' ? base : base[type];
       return `${base}${emoji.codeHex}.${type}`;
     },
-    template(data, options) {
-      return `<i class="emoji emoji-${data.code}${data.img ? ' emoji-image' : ''} ${options.classes}" ${data.img ? `style="background-image:url(${data.img})"` : ''}>${data.string}</i>`;
+    template(data) {
+      return `<i class="emoji emoji-${data.code}${data.img ? ' emoji-image' : ''}" ${data.img ? `style="background-image:url(${data.img})"` : ''}>${data.string}</i>`;
     }
   }
   constructor(options) {
     super(options);
-    this.options = Emoji.options;
     this.config(options);
-    delete this.regexp;
-    delete this.charCodeMap;
-
-    this.charCodeMap = this.normalizeEmojiList(this.options.charList || $extend({}, emojiList))
-
+    this.charCodeMap = this.normalizeEmojiList(this.options.charList)
     let replaceArray = [];
     const isParse = this.isParse();
     this.aliasMap = {};
@@ -179,23 +174,18 @@ export default class Emoji extends Configable {
       return result;
     }
   }
-  config(options) {
-    options = options || {};
-    this.options = $mix({}, this.options, options);
-    return options;
-  }
   isParse() {
-    return !detect()
+    return typeof this.options.isParse === 'function' ? this.options.isParse() : !!this.options.isParse;
   }
   parse(str) {
     return parse(str.replace(/\ufe0f|\u200d/gm, ''));
   }
   getEmojiOptions(s) {
-    return $extend({}, this.charCodeMap[s]);
+    return $extend({}, this.charCodeMap[s], this.options);
   }
   parseImg(s) {
     const emojiOptions = this.getEmojiOptions(s);
-    return this.options.parseImgUrl(emojiOptions, this.options);
+    return this.options.parseImgUrl(emojiOptions);
   }
   parseHtml(s) {
     const isParse = this.isParse();
@@ -209,8 +199,8 @@ export default class Emoji extends Configable {
           const emojiOptions = this.getEmojiOptions(ret);
           ret = this.options.template($extend({}, emojiOptions, {
             string,
-            img: this.options.parseImgUrl(emojiOptions, this.options)
-          }), options);
+            img: this.options.parseImgUrl(emojiOptions)
+          }));
         }
         return ret;
       });
@@ -218,4 +208,5 @@ export default class Emoji extends Configable {
       return s;
     }
   }
-}
+};
+export default Emoji

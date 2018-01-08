@@ -5,7 +5,6 @@ module.exports = {
   'Direct Subclass:': '子类：',
   'Indirect Subclass:': '非直接子类',
   'public class': '公共类',
-  'source': '源码',
   'Static Public Members': '静态公共成员',
   'Static Member Summary': '静态成员',
   'Member Summary': '成员',

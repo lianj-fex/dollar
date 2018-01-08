@@ -2,9 +2,28 @@ import $isPlainObject from './is-plain-object';
 import $extend from './extend';
 import $is from './is';
 import $delay from './delay';
+import $relation from './relation'
 const defaultCacheMapSymbol = Symbol();
-const cacheIdSymbol = Symbol();
-let id = 0;
+/**
+ * 缓存一个函数的返回值，使得在缓存生效期间内，函数返回相同的结果或者重复运行进行报错
+ * @param {function} fn 需要缓存的函数
+ * @param {object} options 缓存的参数
+ * @param {object|function} options.context 调用options各种方法的上下文，如果为undefined，则为结果function的上下文
+ * @param {object|function} options.expires 设置cache的过期时间或者方法<br>
+ *     number 设置n毫秒后清除缓存<br>
+ *     date 设置某个时间清除缓存<br>
+ *     function 返回一个promise决定超时时机
+ * @param {object|function} options.obstruction 如果缓存结果，则是否阻塞<br>
+ *     false 不阻塞，将返回上一次的结果<br>
+ *     object 阻塞，则抛出该对象<br>
+ *     function 获取返回值后按照上述规则
+ * @param {string|function} options.key 设置缓存的key，如果为undefined，则通过relation函数自动生成
+ * @param {*} options.map 缓存表或者获取缓存表的方法，如果是function则会被调用，如果为undefined，则会自动生成
+ * @param {function()} options.set 写入缓存的方法，如果为undefined，则配合默认的options.map使用
+ * @param {function} options.get 获取缓存的方法，如果为undefined，则配合默认的options.map使用
+ * @param {function} options.remove 清除缓存的方法，如果为undefined，则配合默认的options.map使用
+ * @returns {function} 返回一个新的函数
+ */
 export default function cacheable(fn, options) {
   if (!$isPlainObject(options)) {
     options = {
@@ -22,9 +41,7 @@ export default function cacheable(fn, options) {
   }
   return function fnResult(...args) {
     const context = options.context || this;
-    fn[cacheIdSymbol] = fn[cacheIdSymbol] || id++;
-    context[cacheIdSymbol] = context[cacheIdSymbol] || id++;
-    const cacheKey = options.key ? options.key.call(context, ...args) : `${fn[cacheIdSymbol]}-${context[cacheIdSymbol]}`;
+    const cacheKey = $is(options.key, 'function') ? options.key.call(context, fn, ...args) : options.key;
     const map = $is(options.map, 'function') ? options.map.call(context) : options.map;
 
     let cacheItem = options.get.call(context, cacheKey, map);
@@ -37,33 +54,19 @@ export default function cacheable(fn, options) {
       cacheItem = fn.call(this, ...args);
       options.set.call(context, cacheKey, cacheItem, map);
       options.expires.call(context, cacheItem).then(() => {
-        options.clear.call(context, cacheKey, map);
+        options.remove.call(context, cacheKey, map);
       });
     }
     return cacheItem;
   }
 }
 cacheable.defaults = {
-  // 调用config各种方法的上下文，如果为undefined，则为结果function的上下文
   context: undefined,
-  // 设置cache的过期时间或者方法
-  // number，设置n毫秒后清除缓存
-  // date，设置某个时间清除缓存
-  // function 返回一个promise决定超时时机
   expires: result => result.catch(() => {}),
-  // 如果缓存结果，则是否阻塞
-  // false，不阻塞，将返回上一次的结果
-  // object 阻塞，则抛出该对象
-  // 或者 function 获取返回值后按照上述规则
   obstruction: false,
-  // 设置缓存的key，如果为undefined，则自动生成
-  key: undefined,
-  /*
-  key() {
-    return this;
+  key(target, fn) {
+    return $relation(target, fn)
   },
-  */
-  // 缓存表或者获取缓存表的方法;
   map() {
     return this[defaultCacheMapSymbol] = this[defaultCacheMapSymbol] || new Map();
   },

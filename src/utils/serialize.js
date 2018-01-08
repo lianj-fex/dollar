@@ -25,15 +25,13 @@ function assume(i, value, assignment, add) {
 
 /**
  * 序列化，通过对象或数组产生类似cookie、get等字符串
- * @method armer.serialize
- * @static
  * @param {Object|Array.Object} obj
- * @param [options] {{separator, assignment, join, encode}} 序列化的参数
- * {string} [separator] 分割符，默认【&】
- * {string} [assignment] 赋值符，默认【=】
- * {string|function} [join] 数组类型的合并符，默认【,】，或者是合并方法
- * {boolean} [encode] 是否进行编码, 默认true
- * @returns {Object}
+ * @param {options} [options] 序列化的参数
+ * @param {string} [options.separator] 分割符，默认【&】
+ * @param {string} [options.assignment] 赋值符，默认【=】
+ * @param {string|function} [options.join] 数组类型的合并符，默认【,】，或者是合并方法
+ * @param {boolean} [options.encode] 是否进行编码, 默认true
+ * @returns {string}
  */
 function serialize(obj, options) {
   options = $extend({}, serialize.defaults, options);

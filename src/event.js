@@ -190,16 +190,63 @@ export default class Event {
         ...type
       }
     }
+    /**
+     * @ignore
+     */
     this[isDP] = false;
+    /**
+     * @ignore
+     */
     this[isIPS] = false;
+    /**
+     * @ignore
+     */
     this[isPS] = false;
+    /**
+     * @ignore
+     */
+    /**
+     * 事件触发的目标
+     * @type {object}
+     */
     this.target = null;
+    /**
+     * 事件的源事件，当当前事件默认行为被阻止，该事件的默认行为也被阻止
+     * @type {DOM.Event}
+     */
     this.originalEvent = eventInit.originalEvent;
+    /**
+     * 事件触发的当前冒泡目标
+     * @type {object}
+     */
     this.currentTarget = null;
+    /**
+     * 事件触发的时间
+     * @type {object}
+     */
     this.timeStamp = Date.now();
+    /**
+     * 事件触发的结果
+     * @type {object}
+     */
     this.result = eventInit.result;
+    /**
+     * 事件是否可以取消
+     * @readonly
+     * @type {boolean}
+     */
     this.cancelable = eventInit.cancelable;
+    /**
+     * 事件是否冒泡
+     * @readonly
+     * @type {boolean}
+     */
     this.bubbles = eventInit.bubbles;
+    /**
+     * 事件类型
+     * @readonly
+     * @type {string}
+     */
     this.type = eventInit.type;
   }
   isImmediatePropagationStopped() {
@@ -231,12 +278,18 @@ export default class Event {
         this.originalEvent.preventDefault()
       }
       this[isDP] = true;
+      /**
+       * @ignore
+       */
       this[PR] = reason;
     } else {
       console.warn('Only cancelable event can be cancel')
     }
   }
   getPreventReason() {
+    /**
+     * @ignore
+     */
     return this[PR]
   }
   isDefaultPrevented() {
@@ -245,16 +298,16 @@ export default class Event {
 
   /**
    * 绑定一个事件处理器
-   * @param target 绑定的目标
-   * @param handlerObj {string} 绑定事件的类型
-   * @param fct {function} 绑定的处理器
+   * @param {object} target 绑定的目标
+   * @param {string | object} handlerObj 绑定事件的类型
+   * @param {function} handler 绑定的处理器
    */
 
-  static add(target, handlerObj, fct) {
+  static add(target, handlerObj, handler) {
     if (typeof handlerObj === 'string') {
       handlerObj = {
         type: handlerObj,
-        handler: fct
+        handler
       };
     }
     const handlerMap = getHandlerMap.call(target);
@@ -264,20 +317,20 @@ export default class Event {
 
   /**
    * 解绑一个或多个事件处理器
-   * @param target 绑定的目标
+   * @param {object} target 绑定的目标
    * @param handlerObj {string} 解绑事件的类型
-   * @param [fct] {function} 解绑事件的处理器
+   * @param {function} [handler] 解绑事件的处理器，如果不提供，则解绑该事件类型在该对象上的所有监听
    */
 
-  static remove(target, handlerObj, fct) {
+  static remove(target, handlerObj, handler) {
     const events = getHandlerMap.call(target);
     if (events === undefined) return;
     let typeEvents;
     let index;
     if (typeof handlerObj === 'string') {
       typeEvents = events[handlerObj];
-      if (fct) {
-        index = typeEvents.findIndex(item => item.handler === fct);
+      if (handler) {
+        index = typeEvents.findIndex(item => item.handler === handler);
       } else {
         events[handlerObj] = [];
       }
