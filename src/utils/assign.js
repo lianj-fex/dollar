@@ -84,11 +84,13 @@ export default function assign(target, source, options) {
               optionAssign(obj, key, cloneElement ? value.clone() : value);
             } else if ($isArrayLike(value)) {
               optionAssign(obj, key, arrDeep ? assign.call(this, [], [obj[key], value]) : value);
-            } else {
+            } else if ($isPlainObject(value)){
               optionAssign(obj, key, $isPlainObject(obj[key]) ?
                 assign.call(this, {}, [obj[key], value], options) :
                 assign.call(this, {}, [value], options)
               );
+            } else {
+              optionAssign(obj, key, value);
             }
           } else if (value !== undefined) {
             optionAssign(obj, key, value);
