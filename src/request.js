@@ -6,7 +6,7 @@ import $serialize from './utils/serialize';
 import $unserialize from './utils/unserialize';
 import $isPlainObject from './utils/is-plain-object';
 /*import $retry from './utils/retry';
-import $cacheable from './utils/cacheable';*/
+ import $cacheable from './utils/cacheable';*/
 
 import EventEmitter from './event-emitter';
 
@@ -17,8 +17,8 @@ const type2Mime = {
   text: 'text/plain'
 }
 /*
-const defaultMap = new Map();
-*/
+ const defaultMap = new Map();
+ */
 
 function isFormData(data) {
   return FormData.prototype.isPrototypeOf(data);
@@ -68,13 +68,13 @@ class Request extends EventEmitter {
     // 请求体，可以是字符串，会通过serial进行序列化
     body: {},
     query: {},
-/*
-    // 缓存配置，请参考$cacheable
-    cache: true,
-    // 重试函数，请参考$retry
-    retry: 3,
-    // http认证的用户名跟账号
-*/
+    /*
+     // 缓存配置，请参考$cacheable
+     cache: true,
+     // 重试函数，请参考$retry
+     retry: 3,
+     // http认证的用户名跟账号
+     */
     username: '',
     password: '',
     withCredentials: false,
@@ -127,7 +127,14 @@ class Request extends EventEmitter {
 
     if (typeof options.output === 'string') {
       const outputStr = options.output
-      options.output = (xhr) => { return $reflectVal(xhr, outputStr) }
+      options.output = (xhr) => {
+        if (xhr.status) {
+          return $reflectVal(xhr, outputStr)
+        } else {
+          const e = new Error('网络异常');
+          e.code = xhr.status;
+          return e;
+        } }
     }
 
     // 创建xhr对象
@@ -167,14 +174,15 @@ class Request extends EventEmitter {
       };
       xhr.ontimeout = (...args) => {
         console.log(args)
-        debugger;
       }
-      xhr.onerror = (...args) => {
-        console.log(args)
-        debugger;
+      xhr.onerror = (e) => {
+        const output = options.output(xhr);
+        this.trigger('fail', output);
+        reject(output)
       }
-      xhr.upload.onprogress = () => {
-        this.trigger('upload', xhr);
+      xhr.upload.onprogress = (e) => {
+        console.log(e.loaded, e.total);
+        this.trigger('upload', xhr, e.loaded, e.total);
       };
       xhr.onprogress = () => {
         this.trigger('download', xhr)
@@ -277,6 +285,7 @@ class Request extends EventEmitter {
   convert(r) { return r }
 
   // 判断状态, function 返回 'resolve', 'notify' 或者 'reject'
+  // 0 为网络错误
   state(xhr) {
     if (xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)
       return 'resolve';
