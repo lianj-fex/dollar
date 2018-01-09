@@ -49,7 +49,7 @@ class Configable {
    */
   static get options() {
     if (!$own(this.prototype, 'options')) {
-      this.prototype.options = $mix({}, super.options, this.mixOptions);
+      this.prototype.options = $mix({}, this.__proto__.options, this.mixOptions);
     }
     return this.prototype.options;
   }

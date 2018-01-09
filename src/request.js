@@ -60,10 +60,7 @@ class Request extends EventEmitter {
     // 请求头，默认为对象，会插入到请求头
     // 可以是function，则先运行，再按上述执行
     headers(options) {
-      const headers = {
-        'X-Requested-With': 'XMLHttpRequest'
-      };
-      return headers;
+      return {};
     },
     // 请求体，可以是字符串，会通过serial进行序列化
     body: {},
@@ -104,7 +101,7 @@ class Request extends EventEmitter {
   }
 
   then(...args) {
-    return this.prepare(this.options).then((sendOptions) => {
+    return Promise.resolve(this.prepare(this.options)).then((sendOptions) => {
       return this.transport(sendOptions);
     }).then(...args)
   }
@@ -207,8 +204,10 @@ class Request extends EventEmitter {
       if (typeof body !== 'string' && !isBlob(body) && !isFD) {
         body = this.serialize(options.body);
       }
+      console.log(isFD);
 
       if (!isFD) {
+        console.log(options.headers)
         $each(options.headers, (key, value) => {
           xhr.setRequestHeader(key, value);
         });
