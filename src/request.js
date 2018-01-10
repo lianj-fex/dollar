@@ -12,7 +12,7 @@ import EventEmitter from './event-emitter';
 
 const methods = ['get', 'post', 'delete', 'put'];
 const type2Mime = {
-  json: 'application/json',
+  json: 'text/json',
   document: 'text/xml',
   text: 'text/plain'
 }
@@ -37,7 +37,6 @@ function xmlParse(txt) {
 }
 const rUrlEncoded = /[^=&]+=([^=&]+)?/
 function isJSON(string) {
-  console.log(string);
   return string.startsWith('[') && string.endsWith(']') || string.startsWith('{') && string.endsWith('}')
 }
 function isUrlEncoded(string) {
@@ -82,15 +81,7 @@ class Request extends EventEmitter {
     // 输出方法，返回转换的结果作为Promise的结果
     // function，传入xhr，返回转换后的xhr对象，或者类xhr对象,
     // 字符串，通过reflect反射出结果，默认返回xhr.response.data
-    output: 'response.data',
-    error(xhr) {
-      if (xhr.status == 0) return new Error('网络异常');
-      else {
-        const error = new Error(xhr.response.message);
-        error.code = xhr.response.code;
-        return error;
-      }
-    }
+    output: 'response.data'
   }
   constructor(method, ...args) {
     super();
@@ -132,11 +123,13 @@ class Request extends EventEmitter {
 
     if (typeof options.output === 'string') {
       const outputStr = options.output
-      options.output = function(xhr) {
+      options.output = (xhr) => {
         if (xhr.status) {
           return $reflectVal(xhr, outputStr)
         } else {
-          return this.error(xhr)
+          const e = new Error('网络异常');
+          e.code = xhr.status;
+          return e;
         } }
     }
 
@@ -176,7 +169,9 @@ class Request extends EventEmitter {
         }
       };
       xhr.ontimeout = (...args) => {
-        console.log(args)
+        const output = options.output(xhr, 'reject');
+        this.trigger('fail', output);
+        reject(output)
       }
       xhr.onerror = (e) => {
         const output = options.output(xhr, 'reject');
@@ -184,8 +179,7 @@ class Request extends EventEmitter {
         reject(output)
       }
       xhr.upload.onprogress = (e) => {
-        console.log(e.loaded, e.total);
-        this.trigger('upload', xhr, e.loaded, e.total);
+        this.trigger('upload', [xhr, e.loaded, e.total]);
       };
       xhr.onprogress = () => {
         this.trigger('download', xhr)
@@ -219,7 +213,7 @@ class Request extends EventEmitter {
 
       if (typeof body === 'string' && body) {
         if (isJSON(body)) {
-          xhr.setRequestHeader('Content-type', 'application/json');
+          xhr.setRequestHeader('Content-type', 'text/json');
         } else if (isUrlEncoded(body)) {
           xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
         } else {
