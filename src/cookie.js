@@ -37,7 +37,7 @@ function testAndSet(valueHash, isNew) {
       oldValue[i] = list[i];
       if (valueHash.hasOwnProperty(i)) list[i] = newValue[i] = $copy(valueHash[i]);
       else if (isNew) {
-        this.del(i);
+        this.remove(i);
       }
     }
   });
