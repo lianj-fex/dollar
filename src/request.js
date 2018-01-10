@@ -132,7 +132,7 @@ class Request extends EventEmitter {
 
     if (typeof options.output === 'string') {
       const outputStr = options.output
-      options.output = (xhr) => {
+      options.output = function(xhr) {
         if (xhr.status) {
           return $reflectVal(xhr, outputStr)
         } else {
