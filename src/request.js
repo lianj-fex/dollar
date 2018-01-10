@@ -43,6 +43,15 @@ function isUrlEncoded(string) {
   return rUrlEncoded.test(string)
 }
 class Request extends EventEmitter {
+  static object2FormData(obj) {
+    const fd = new FormData();
+    if (obj) {
+      Object.keys(obj).forEach((key) => {
+        fd.append(key, obj[key]);
+      });
+    }
+    return fd;
+  }
   static mixOptions = {
     // 超时时间
     timeout: 10000,
@@ -81,7 +90,15 @@ class Request extends EventEmitter {
     // 输出方法，返回转换的结果作为Promise的结果
     // function，传入xhr，返回转换后的xhr对象，或者类xhr对象,
     // 字符串，通过reflect反射出结果，默认返回xhr.response.data
-    output: 'response.data'
+    output: 'response.data',
+    error(xhr) {
+      if (xhr.status == 0) return new Error('网络异常');
+      else {
+        const error = new Error(xhr.response.message);
+        error.code = xhr.response.code;
+        return error;
+      }
+    }
   }
   constructor(method, ...args) {
     super();
@@ -123,15 +140,9 @@ class Request extends EventEmitter {
 
     if (typeof options.output === 'string') {
       const outputStr = options.output
-      options.output = (xhr) => {
-        if (xhr.status) {
-          return $reflectVal(xhr, outputStr)
-        } else {
-          const e = new Error('网络异常');
-          e.code = xhr.status;
-          return e;
-        } }
+      options.output = (xhr) => $reflectVal(xhr, outputStr)
     }
+
 
     // 创建xhr对象
     return new Promise((resolve, reject) => {
@@ -159,24 +170,25 @@ class Request extends EventEmitter {
       xhr.onload = () => {
         const resultXhr = this.convert(xhr);
         const state = this.state(resultXhr);
-        const output = options.output(resultXhr, state);
         if (state === 'resolve') {
+          const output = options.output(resultXhr);
           this.trigger('success', output);
           resolve(output)
         } else {
-          this.trigger('fail', output);
-          reject(output)
+          const error = options.error(resultXhr);
+          this.trigger('fail', error);
+          reject(error)
         }
       };
       xhr.ontimeout = (...args) => {
-        const output = options.output(xhr, 'reject');
-        this.trigger('fail', output);
-        reject(output)
+        const error = options.error(xhr);
+        this.trigger('fail', error);
+        reject(error)
       }
       xhr.onerror = (e) => {
-        const output = options.output(xhr, 'reject');
-        this.trigger('fail', output);
-        reject(output)
+        const error = options.error(xhr);
+        this.trigger('fail', error);
+        reject(error)
       }
       xhr.upload.onprogress = (e) => {
         this.trigger('upload', [xhr, e.loaded, e.total]);
