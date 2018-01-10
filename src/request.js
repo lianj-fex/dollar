@@ -12,7 +12,7 @@ import EventEmitter from './event-emitter';
 
 const methods = ['get', 'post', 'delete', 'put'];
 const type2Mime = {
-  json: 'text/json',
+  json: 'application/json',
   document: 'text/xml',
   text: 'text/plain'
 }
@@ -225,7 +225,7 @@ class Request extends EventEmitter {
 
       if (typeof body === 'string' && body) {
         if (isJSON(body)) {
-          xhr.setRequestHeader('Content-type', 'text/json');
+          xhr.setRequestHeader('Content-type', 'application/json');
         } else if (isUrlEncoded(body)) {
           xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
         } else {
