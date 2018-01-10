@@ -12,7 +12,7 @@ import EventEmitter from './event-emitter';
 
 const methods = ['get', 'post', 'delete', 'put'];
 const type2Mime = {
-  json: 'text/json',
+  json: 'application/json',
   document: 'text/xml',
   text: 'text/plain'
 }
@@ -82,7 +82,15 @@ class Request extends EventEmitter {
     // 输出方法，返回转换的结果作为Promise的结果
     // function，传入xhr，返回转换后的xhr对象，或者类xhr对象,
     // 字符串，通过reflect反射出结果，默认返回xhr.response.data
-    output: 'response.data'
+    output: 'response.data',
+    error(xhr) {
+      if (xhr.status == 0) return new Error('网络异常');
+      else {
+        const error = new Error(xhr.response.message);
+        error.code = xhr.response.code;
+        return error;
+      }
+    }
   }
   constructor(method, ...args) {
     super();
@@ -128,9 +136,7 @@ class Request extends EventEmitter {
         if (xhr.status) {
           return $reflectVal(xhr, outputStr)
         } else {
-          const e = new Error('网络异常');
-          e.code = xhr.status;
-          return e;
+          return this.error(xhr)
         } }
     }
 
@@ -160,7 +166,7 @@ class Request extends EventEmitter {
       xhr.onload = () => {
         const resultXhr = this.convert(xhr);
         const state = this.state(resultXhr);
-        const output = options.output(resultXhr);
+        const output = options.output(resultXhr, state);
         if (state === 'resolve') {
           this.trigger('success', output);
           resolve(output)
@@ -173,7 +179,7 @@ class Request extends EventEmitter {
         console.log(args)
       }
       xhr.onerror = (e) => {
-        const output = options.output(xhr);
+        const output = options.output(xhr, 'reject');
         this.trigger('fail', output);
         reject(output)
       }
@@ -204,10 +210,8 @@ class Request extends EventEmitter {
       if (typeof body !== 'string' && !isBlob(body) && !isFD) {
         body = this.serialize(options.body);
       }
-      console.log(isFD);
 
       if (!isFD) {
-        console.log(options.headers)
         $each(options.headers, (key, value) => {
           xhr.setRequestHeader(key, value);
         });
@@ -215,7 +219,7 @@ class Request extends EventEmitter {
 
       if (typeof body === 'string' && body) {
         if (isJSON(body)) {
-          xhr.setRequestHeader('Content-type', 'text/json');
+          xhr.setRequestHeader('Content-type', 'application/json');
         } else if (isUrlEncoded(body)) {
           xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
         } else {
