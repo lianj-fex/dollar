@@ -171,7 +171,7 @@ class Request extends EventEmitter {
         const resultXhr = this.convert(xhr);
         const state = this.state(resultXhr);
         if (state === 'resolve') {
-          const output = options.output(resultXhr);
+          const output = options.output ? options.output(resultXhr) : resultXhr;
           this.trigger('success', output);
           resolve(output)
         } else {

@@ -8,6 +8,7 @@ export default function mix(...args) {
     concatArrWhenReflect: true,
     create: true,
     cloneElement: false,
+    clearWhenUndefined: true,
     ignore: ['$$hashKey'],
     ignoreExist: false,
   });
