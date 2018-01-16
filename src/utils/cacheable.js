@@ -30,7 +30,7 @@ export default function cacheable(fn, options) {
       expires: options,
     };
   }
-  options = $extend({}, options, cacheable.defaults);
+  options = $extend({}, cacheable.defaults, options);
   if (options.key && !$is(options.key, 'function')) {
     const tmpKey = options.key;
     options.key = () => tmpKey;
@@ -64,8 +64,8 @@ cacheable.defaults = {
   context: undefined,
   expires: result => result.catch(() => {}),
   obstruction: false,
-  key(target, fn) {
-    return $relation(target, fn)
+  key(fn) {
+    return $relation(this, fn)
   },
   map() {
     return this[defaultCacheMapSymbol] = this[defaultCacheMapSymbol] || new Map();

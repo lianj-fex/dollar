@@ -1,4 +1,5 @@
 import $mix from './utils/mix';
+import $extend from './utils/extend';
 import $own from './utils/own';
 /**
  * 用于可配置的基础类，一般仅用于继承的基类
@@ -66,7 +67,11 @@ class Configable {
    * @returns {object} 配置后的options
    */
   static config(...options) {
-    return $mix(this.options, ...options);
+    let isMix = true;
+    if (typeof options[options.length - 1] === 'boolean') {
+      isMix = options.pop()
+    }
+    return (isMix ? $mix : $extend)(this.options, ...options);
   }
 
   /**
@@ -75,15 +80,19 @@ class Configable {
    * @returns {object} 配置后的options
    */
   config(...options) {
+    let isMix = true;
+    if (typeof options[options.length - 1] === 'boolean') {
+      isMix = options.pop()
+    }
     const configed = $own(this, 'options') !== undefined;
     if (configed) {
-      $mix(this.options, ...options);
+      (isMix ? $mix : $extend)(this.options, ...options);
     } else {
       /**
        * 实例的配置，默认继承自父类，可以通过实例的config方法进行初始化及修改，也可以直接覆盖它进行修改
        * @type {object}
        */
-      this.options = $mix({}, this.constructor.options, ...options);
+      this.options = (isMix ? $mix : $extend)({}, this.constructor.options, ...options);
     }
     return this.options;
   }
