@@ -91,8 +91,8 @@ class Request extends EventEmitter {
     // function，传入xhr，返回转换后的xhr对象，或者类xhr对象,
     // 字符串，通过reflect反射出结果，默认返回xhr.response.data
     output: 'response.data',
-    error(xhr) {
-      if (xhr.status == 0) return new Error('网络异常');
+    error(xhr, type) {
+      if (xhr.status == 0) return new Error({timeout: '请求超时', error: '网络异常'}[type]);
       else {
         const error = new Error(xhr.response.message);
         error.code = xhr.response.code;
@@ -148,27 +148,35 @@ class Request extends EventEmitter {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       this.xhr = xhr;
-      xhr.addEventListener('readystatechange', () => {
-        if (this.readyState === 4 && this.responseType === 'json' && !xhr.responseJSON && isJSON(xhr.responseText)) {
-          const response = JSON.parse(xhr.responseText);
-          Object.defineProperty(xhr, 'response', {
-            writable: true,
-            value: response
-          });
-          xhr.responseJSON = response;
-        }
-      });
       const url = options.url + (options.queryString ? (
           (options.url.includes('?') ? '&' : '?') + options.queryString) : ''
         );
       if (options.type) {
-        xhr.responseType = options.type;
-        if (xhr.overrideMimeType && type2Mime[options.type]) {
-          xhr.overrideMimeType(type2Mime[options.type])
-        }
+        try {
+          xhr.responseType = options.type;
+          if (xhr.overrideMimeType && type2Mime[options.type]) {
+            xhr.overrideMimeType(type2Mime[options.type])
+          }
+        } catch(e) {}
       }
       xhr.onload = () => {
-        const resultXhr = this.convert(xhr);
+
+        const isNeedPolyFillJSON = options.type == 'json' && !xhr.responseType && !xhr.responseJSON && isJSON(xhr.responseText)
+        let resultXhr = xhr;
+        if (isNeedPolyFillJSON) {
+          const json = JSON.parse(resultXhr.responseText);
+          resultXhr = {
+            status: resultXhr.status,
+            response: json,
+            responseJSON: json,
+            responseType: 'json',
+            getResponseHeader(...args) {
+              return xhr.getResponseHeader(...args)
+            }
+          }
+        }
+        resultXhr = this.convert(resultXhr);
+
         const state = this.state(resultXhr);
         if (state === 'resolve') {
           const output = options.output ? options.output(resultXhr) : resultXhr;
@@ -181,12 +189,12 @@ class Request extends EventEmitter {
         }
       };
       xhr.ontimeout = (...args) => {
-        const error = options.error(xhr);
+        const error = options.error(xhr, 'timeout');
         this.trigger('fail', error);
         reject(error)
       }
       xhr.onerror = (e) => {
-        const error = options.error(xhr);
+        const error = options.error(xhr, 'error');
         this.trigger('fail', error);
         reject(error)
       }
