@@ -175,7 +175,7 @@ class Request extends EventEmitter {
             }
           }
         }
-        resultXhr = this.convert(resultXhr);
+        resultXhr = this.convert(resultXhr, options);
 
         const state = this.state(resultXhr);
         if (state === 'resolve') {
