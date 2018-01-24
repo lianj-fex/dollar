@@ -90,7 +90,7 @@ class Request extends EventEmitter {
     // 输出方法，返回转换的结果作为Promise的结果
     // function，传入xhr，返回转换后的xhr对象，或者类xhr对象,
     // 字符串，通过reflect反射出结果，默认返回xhr.response.data
-    output: 'response.data',
+    output: 'response',
     error(xhr, type) {
       if (xhr.status == 0) return new Error({timeout: '请求超时', error: '网络异常'}[type]);
       else {
