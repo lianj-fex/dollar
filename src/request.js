@@ -91,6 +91,9 @@ class Request extends EventEmitter {
     // function，传入xhr，返回转换后的xhr对象，或者类xhr对象,
     // 字符串，通过reflect反射出结果，默认返回xhr.response.data
     output: 'response',
+    prepare(options) {
+      return Object.assign({}, this.options, options);
+    },
     error(xhr, type) {
       if (xhr.status == 0) return new Error({timeout: '请求超时', error: '网络异常'}[type]);
       else {
@@ -268,7 +271,7 @@ class Request extends EventEmitter {
     if (output) {
       methodAndOutput.output = output
     }
-    if ($isPlainObject(sendData) && (sendData.method || sendData.url || sendData.query || sendData.body)) {
+    if ($isPlainObject(sendData) && (sendData.method || sendData.url || sendData.query || sendData.body || sendData.serialize || sendData.prepare)) {
       tmpOptions = $extend({}, sendData, methodAndOutput)
     } else {
       tmpOptions = $extend({
@@ -282,9 +285,7 @@ class Request extends EventEmitter {
 
   // 发送前options的处理方法
   async prepare(options) {
-    options = Object.assign({}, this.options, options)
-    return options;
-
+    return this.options.prepare ? this.options.prepare(options) : options;
   }
   // 对于不支持的类型的序列化方法，
   serialize(s) {
