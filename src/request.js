@@ -10,7 +10,7 @@ import $isPlainObject from './utils/is-plain-object';
 
 import EventEmitter from './event-emitter';
 
-const methods = ['get', 'post', 'delete', 'put'];
+const methods = ['get', 'post', 'delete', 'put', 'patch'];
 const type2Mime = {
   json: 'application/json',
   document: 'text/xml',
@@ -41,6 +41,9 @@ function isJSON(string) {
 }
 function isUrlEncoded(string) {
   return rUrlEncoded.test(string)
+}
+function hasKeys(obj, keys) {
+  return Object.keys(obj).some((key) => !!~keys.indexOf(key))
 }
 class Request extends EventEmitter {
   static object2FormData(obj) {
@@ -95,58 +98,37 @@ class Request extends EventEmitter {
       return Object.assign({}, this.options, options);
     },
     error(xhr, type) {
-      if (xhr.status == 0) return new Error({timeout: '请求超时', error: '网络异常'}[type]);
-      else {
-        const error = new Error(xhr.response.message);
+      let error
+      if (xhr.status == 0) {
+        error = new Error({timeout: '请求超时', error: '网络异常'}[type]);
+        error.xhr = xhr
+        return error
+      } else {
+        error = new Error(xhr.response.message);
+        error.xhr = xhr;
         error.code = xhr.response.code;
         return error;
       }
     }
   }
-  constructor(method, ...args) {
+
+  constructor(...args) {
     super();
-    let urlOptions = {}
-    const url = args[0];
-    if (typeof url === 'string' || typeof url === 'function') {
-      urlOptions = {
-        url
-      };
-      args.shift();
-    }
-    this.config(this.getConfig(method, ...args), urlOptions);
+    this.config(...args);
     methods.forEach((method) => {
       this[method] = (...args) => this.send(method, ...args);
     });
   }
 
   then(...args) {
-    return Promise.resolve(this.prepare(this.options)).then((sendOptions) => {
-      return this.transport(sendOptions);
-    }).then(...args)
+    return this.send().then(...args)
   }
   async send(...args) {
-    return this.transport(await this.prepare(args.length ? this.getConfig(...args) : {}))
+    const options = args.length ? $extend({}, this.options, this.getConfig(...args)) : this.options;
+    const sendOptions = await this.prepare(options);
+    return await this.output(await this.transport(sendOptions), sendOptions)
   }
   async transport(options) {
-
-    if (global.location && !options.url) {
-      options.url = global.location.pathname;
-      options.query = $mix($unserialize(global.location.search.replace('?', '')), options.query);
-    }
-    if (typeof options.url === 'function') {
-      options.url = options.url(options.params);
-    }
-    options.queryString = $serialize(options.query);
-    if (typeof options.headers === 'function') {
-      options.headers = options.headers(options);
-    }
-
-    if (typeof options.output === 'string') {
-      const outputStr = options.output
-      options.output = (xhr) => $reflectVal(xhr, outputStr)
-    }
-
-
     // 创建xhr对象
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
@@ -182,23 +164,22 @@ class Request extends EventEmitter {
 
         const state = this.state(resultXhr);
         if (state === 'resolve') {
-          const output = options.output ? options.output(resultXhr) : resultXhr;
-          this.trigger('success', output);
-          resolve(output)
+          this.trigger('success', resultXhr);
+          resolve(resultXhr)
         } else {
           const error = options.error(resultXhr);
-          this.trigger('fail', error);
+          this.trigger('fail', [resultXhr, error]);
           reject(error)
         }
       };
       xhr.ontimeout = (...args) => {
         const error = options.error(xhr, 'timeout');
-        this.trigger('fail', error);
+        this.trigger('fail', [xhr, error]);
         reject(error)
       }
       xhr.onerror = (e) => {
         const error = options.error(xhr, 'error');
-        this.trigger('fail', error);
+        this.trigger('fail', [xhr, error]);
         reject(error)
       }
       xhr.upload.onprogress = (e) => {
@@ -255,37 +236,70 @@ class Request extends EventEmitter {
     this.xhr.abort();
   }
 
-  getConfig(method, sendData, output) {
+  config(method, url, sendData, output) {
+    let tmpOptions;
+
+
     if (typeof method !== 'string') {
       output = sendData;
-      sendData = method;
+      sendData = url;
+      url = method;
       method = undefined;
     }
 
-    let tmpOptions;
+    if (typeof url !== 'function' && (typeof url !== 'string' || typeof url === 'string' && !~url.indexOf('/')) ) {
+      output = sendData;
+      sendData = url;
+      url = undefined;
+    }
 
-    let methodAndOutput = {};
+    let methodAndOutputAndUrl = {};
     if (method) {
-      methodAndOutput.method = method
+      methodAndOutputAndUrl.method = method
     }
     if (output) {
-      methodAndOutput.output = output
+      methodAndOutputAndUrl.output = output
     }
-    if ($isPlainObject(sendData) && (sendData.method || sendData.url || sendData.query || sendData.body || sendData.serialize || sendData.prepare)) {
-      tmpOptions = $extend({}, sendData, methodAndOutput)
+    if (url) {
+      methodAndOutputAndUrl.url = url;
+    }
+    if ($isPlainObject(sendData) && hasKeys(sendData, Object.keys(this.constructor.options))) {
+      tmpOptions = $extend({}, sendData, methodAndOutputAndUrl)
     } else {
       tmpOptions = $extend({
-        [method.toLowerCase() === 'get' ? 'query' : 'body']: sendData,
-        sendData,
-      }, methodAndOutput)
+        [method.toLowerCase() === 'get' ? 'query' : 'body']: sendData
+      }, methodAndOutputAndUrl)
     }
 
-    return tmpOptions;
+    return super.config(tmpOptions);
+  }
+
+  output(xhr, options) {
+    let outputFn = options.output
+    if (typeof outputFn === 'string') {
+      const outputStr = options.output
+      outputFn = (xhr) => $reflectVal(xhr, outputStr)
+    }
+    return outputFn ? outputFn(xhr) : xhr
   }
 
   // 发送前options的处理方法
   async prepare(options) {
-    return this.options.prepare ? this.options.prepare(options) : options;
+    options = await (this.options.prepare ? this.options.prepare(options) : options);
+
+    if (global.location && !options.url) {
+      options.url = global.location.pathname;
+      options.query = $mix($unserialize(global.location.search.replace('?', '')), options.query);
+    }
+    if (typeof options.url === 'function') {
+      options.url = options.url(options.params);
+    }
+    options.queryString = $serialize(options.query);
+    if (typeof options.headers === 'function') {
+      options.headers = options.headers(options);
+    }
+
+    return options;
   }
   // 对于不支持的类型的序列化方法，
   serialize(s) {
