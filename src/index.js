@@ -6,6 +6,7 @@ import Event from './event';
 import EventEmitter from './event-emitter';
 import XhrRequest from './request';
 import Cookie from './cookie';
+import data from './data';
 /*
 import Emoji from './emoji';
 */
@@ -19,6 +20,7 @@ $each(utils, (name, fn) => {
 if (!$hasOwn($, 'Event')) {
   $.Event = Event;
 }
+$.data = data;
 $.factory = $factory;
 $.EventEmitter = EventEmitter;
 $.XhrRequest = XhrRequest;

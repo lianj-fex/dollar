@@ -2,7 +2,8 @@
   "name": "@lianj/dollar2",
   "version": "0.3.17",
   "description": "一个工具库",
-  "main": "dist/dollar2.min.js",
+  "main": "dist/node/index.js",
+  "browser": "dist/web/index.js",
   "directories": {
     "test": "test"
   },
@@ -27,6 +28,7 @@
     "webpack-notifier": "^1.5.0"
   },
   "scripts": {
+    "prepublish": "npm run build",
     "build": "webpack",
     "doc": "esdoc && start ./docs/index.html",
     "test": "echo \"Error: no test specified\" && exit 1"
