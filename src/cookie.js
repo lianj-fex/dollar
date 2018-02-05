@@ -81,10 +81,12 @@ export default class Cookie extends EventEmitter {
           }, cookieSerializeConfigOptions)
           }`;
     },
-    removeCookies(keys) {
+    removeCookies(keys, options) {
       keys = $toHash(keys, 'delete');
 
       this.options.context.document.cookie = $serialize(keys, cookieSerializeOptions) + '; ' + $serialize({
+          domain: options.domain,
+          path: options.path,
           expires: (new Date(new Date() - 1)).toUTCString()
         }, cookieSerializeConfigOptions);
     }
@@ -185,11 +187,11 @@ export default class Cookie extends EventEmitter {
    * @example
    *  cookie.remove(['my-cookie1', 'my-cookie2'])
    */
-  remove(keys) {
+  remove(keys, options) {
     if (typeof keys === 'string') {
       keys = [keys];
     }
-    this.options.removeCookies.call(this, keys);
+    this.options.removeCookies.call(this, keys, options);
   }
 
 }
