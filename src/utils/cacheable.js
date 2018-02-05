@@ -65,7 +65,7 @@ export default function cacheable(fn, options) {
       cacheExpires = options.expires.call(context, cacheItem);
       cacheExpires.then(() => {
         if (!cacheExpires.isAbort) {
-          options.remove.call(context, cacheKey, map);
+          options.remove.call(context, cacheKey, map, cacheItem);
           context[defaultExpiresMapSymbol].delete(cacheKey);
         }
       });
