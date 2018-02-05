@@ -4,6 +4,7 @@ import $is from './is';
 import $delay from './delay';
 import $relation from './relation'
 const defaultCacheMapSymbol = Symbol();
+const defaultExpiresMapSymbol = Symbol();
 /**
  * 缓存一个函数的返回值，使得在缓存生效期间内，函数返回相同的结果或者重复运行进行报错
  * @param {function} fn 需要缓存的函数
@@ -13,6 +14,7 @@ const defaultCacheMapSymbol = Symbol();
  *     number 设置n毫秒后清除缓存<br>
  *     date 设置某个时间清除缓存<br>
  *     function 返回一个promise决定超时时机
+ * @param {boolean} options.abortExpires 是否在再次调用的时候重新生成expires，并跳过之前的expires<br>
  * @param {object|function} options.obstruction 如果缓存结果，则是否阻塞<br>
  *     false 不阻塞，将返回上一次的结果<br>
  *     object 阻塞，则抛出该对象<br>
@@ -43,8 +45,13 @@ export default function cacheable(fn, options) {
     const context = options.context || this;
     const cacheKey = $is(options.key, 'function') ? options.key.call(context, fn, ...args) : options.key;
     const map = $is(options.map, 'function') ? options.map.call(context) : options.map;
-
+    context[defaultExpiresMapSymbol] = context[defaultExpiresMapSymbol] || new Map();
+    let cacheExpires = context[defaultExpiresMapSymbol].get(cacheKey);
     let cacheItem = options.get.call(context, cacheKey, map);
+    if (options.abortExpires && cacheExpires) {
+      cacheExpires.isAbort = true;
+      cacheExpires = undefined;
+    }
     if (cacheItem) {
       const obstruction = typeof options.obstruction === 'function' ? options.obstruction.call(context, ...args) : options.obstruction;
       if (obstruction) {
@@ -53,9 +60,16 @@ export default function cacheable(fn, options) {
     } else {
       cacheItem = fn.call(this, ...args);
       options.set.call(context, cacheKey, cacheItem, map);
-      options.expires.call(context, cacheItem).then(() => {
-        options.remove.call(context, cacheKey, map);
+    }
+    if (!cacheExpires) {
+      cacheExpires = options.expires.call(context, cacheItem);
+      cacheExpires.then(() => {
+        if (!cacheExpires.isAbort) {
+          options.remove.call(context, cacheKey, map);
+          context[defaultExpiresMapSymbol].delete(cacheKey);
+        }
       });
+      context[defaultExpiresMapSymbol].set(cacheKey, cacheExpires);
     }
     return cacheItem;
   }
@@ -63,6 +77,7 @@ export default function cacheable(fn, options) {
 cacheable.defaults = {
   context: undefined,
   expires: result => result.catch(() => {}),
+  abortExpires: true,
   obstruction: false,
   key(fn) {
     return $relation(this, fn)
