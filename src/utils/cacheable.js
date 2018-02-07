@@ -77,7 +77,7 @@ export default function cacheable(fn, options) {
 cacheable.defaults = {
   context: undefined,
   expires: result => result.catch(() => {}),
-  abortExpires: true,
+  abortExpires: false,
   obstruction: false,
   key(fn) {
     return $relation(this, fn)
