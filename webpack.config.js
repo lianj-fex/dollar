@@ -39,12 +39,7 @@ let baseConfig = {
       customSummary: () => {}
     }),
     new FriendlyErrorsWebpackPlugin(),
-    new webpack.optimize.ModuleConcatenationPlugin(),
-    new webpack.optimize.UglifyJsPlugin({
-      compress: {
-        warnings: false
-      }
-    })
+    new webpack.optimize.ModuleConcatenationPlugin()
   ]
 };
 
@@ -53,7 +48,12 @@ module.exports = [merge(baseConfig, {
   entry: {
     '/web/index': './src/entry/web',
     '/web/emoji': './src/entry/web/emoji'
-  }
+  },
+  plugins: [new webpack.optimize.UglifyJsPlugin({
+    compress: {
+      warnings: false
+    }
+  })]
 }), merge(baseConfig, {
   target: 'node',
   output: {

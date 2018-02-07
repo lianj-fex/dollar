@@ -7,7 +7,7 @@ import $unserialize from './utils/unserialize';
 import $isPlainObject from './utils/is-plain-object';
 /*import $retry from './utils/retry';
  import $cacheable from './utils/cacheable';*/
-
+import XMLHttpRequest from 'xhr2';
 import EventEmitter from './event-emitter';
 
 const methods = ['get', 'post', 'delete', 'put', 'patch'];
@@ -21,10 +21,10 @@ const type2Mime = {
  */
 
 function isFormData(data) {
-  return FormData.prototype.isPrototypeOf(data);
+  return global.FormData && FormData.prototype.isPrototypeOf(data);
 }
 function isBlob(s) {
-  return Blob.prototype.isPrototypeOf(s);
+  return global.Blob && Blob.prototype.isPrototypeOf(s);
 }
 function xmlParse(txt) {
   if (window.DOMParser) {
