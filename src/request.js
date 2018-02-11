@@ -111,6 +111,17 @@ class Request extends EventEmitter {
       }
     }
   }
+  // 用于判断是options还是sendData
+  isOptions(sendData) {
+    // hasKeys(sendDataOrOptions, Object.keys(this.constructor.options))
+    return $isPlainObject(sendData) && (typeof sendData.method === 'string' ||
+      typeof sendData.url === 'function' || typeof sendData.url === 'string' ||
+      typeof sendData.query === 'object' || sendData.body ||
+      typeof sendData.output === 'string' || typeof sendData.output === 'function' ||
+      typeof sendData.convert === 'function' ||
+      typeof sendData.prepare === 'function' ||
+      typeof sendData.headers === 'object' || typeof sendData.headers === 'function')
+  }
 
   constructor(...args) {
     super();
@@ -209,21 +220,22 @@ class Request extends EventEmitter {
         body = this.serialize(options.body);
       }
 
+      if (typeof body === 'string' && body) {
+        if (isJSON(body)) {
+          options.headers['Content-type'] = 'application/json';
+        } else if (isUrlEncoded(body)) {
+          options.headers['Content-type'] = 'application/x-www-form-urlencoded';
+        } else {
+          options.headers['Content-type'] = 'text/plain';
+        }
+      }
+
       if (!isFD) {
         $each(options.headers, (key, value) => {
           xhr.setRequestHeader(key, value);
         });
       }
 
-      if (typeof body === 'string' && body) {
-        if (isJSON(body)) {
-          xhr.setRequestHeader('Content-type', 'application/json');
-        } else if (isUrlEncoded(body)) {
-          xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
-        } else {
-          xhr.setRequestHeader('Content-type', 'text/plain')
-        }
-      }
       try {
         xhr.send(body);
       } catch(e) {
@@ -236,20 +248,20 @@ class Request extends EventEmitter {
     this.xhr.abort();
   }
 
-  config(method, url, sendData, output) {
+  config(method, url, sendDataOrOptions, output) {
     let tmpOptions;
 
 
     if (typeof method !== 'string') {
-      output = sendData;
-      sendData = url;
+      output = sendDataOrOptions;
+      sendDataOrOptions = url;
       url = method;
       method = undefined;
     }
 
     if (typeof url !== 'function' && (typeof url !== 'string' || typeof url === 'string' && !~url.indexOf('/')) ) {
-      output = sendData;
-      sendData = url;
+      output = sendDataOrOptions;
+      sendDataOrOptions = url;
       url = undefined;
     }
 
@@ -257,17 +269,17 @@ class Request extends EventEmitter {
     if (method) {
       methodAndOutputAndUrl.method = method
     }
-    if (output) {
-      methodAndOutputAndUrl.output = output
-    }
     if (url) {
       methodAndOutputAndUrl.url = url;
     }
-    if ($isPlainObject(sendData) && hasKeys(sendData, Object.keys(this.constructor.options))) {
-      tmpOptions = $extend({}, sendData, methodAndOutputAndUrl)
+    if (output) {
+      methodAndOutputAndUrl.output = output
+    }
+    if (this.isOptions(sendDataOrOptions)) {
+      tmpOptions = $extend({}, sendDataOrOptions, methodAndOutputAndUrl)
     } else {
       tmpOptions = $extend({
-        [method.toLowerCase() === 'get' ? 'query' : 'body']: sendData
+        [method.toLowerCase() === 'get' ? 'query' : 'body']: sendDataOrOptions
       }, methodAndOutputAndUrl)
     }
 
