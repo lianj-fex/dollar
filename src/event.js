@@ -31,40 +31,6 @@ function wrapEvent(event, fn) {
   }
 }
 
-async function invokeAsyncAction(event, args) {
-  if (event.result === false) {
-    event.preventDefault();
-  }
-  let actionResult;
-  if (!event.onlyHandlers) {
-    const ontype = `on${event.type}`;
-    let actFn = getAction.call(event.target, event);
-    if (!event.isDefaultPrevented() && ontype && actFn) {
-      try {
-        actionResult = await wrapEvent(event, actFn).apply(event.target, args);
-      } catch(err) {
-        event.preventDefault(err);
-        throw err;
-      }
-    }
-  }
-  return event.actionResult = actionResult || event.result
-}
-function invokeAction(event, args) {
-  if (event.result === false) {
-    event.preventDefault();
-  }
-  let actionResult;
-  if (!event.onlyHandlers) {
-    const ontype = `on${event.type}`;
-    let actFn = getAction.call(event.target, event);
-    if (!event.isDefaultPrevented() && ontype && actFn) {
-      actionResult = wrapEvent(event, actFn).apply(event.target, args);
-    }
-  }
-  return event.actionResult = actionResult || event.result
-}
-
 async function invokeAsyncHandler(event, args) {
   do {
     const target = event.currentTarget;
@@ -94,6 +60,26 @@ async function invokeAsyncHandler(event, args) {
     if (ontype && target[ontype] && target[ontype].apply) {
       event.result = await wrapEvent(event, target[ontype]).call(target, event, ...args);
       // 异步与非异步的区别
+    }
+    if (event.result === false) {
+      event.preventDefault();
+    }
+    const isSelf = event.currentTarget === event.target;
+    let actionResult;
+    if (!event.onlyHandlers && (isSelf || event.invokeBubblesAction)) {
+      const ontype = `on${event.type}`;
+      let actFn = getAction.call(event.target, event);
+      if (!event.isDefaultPrevented() && ontype && actFn) {
+        try {
+          actionResult = await wrapEvent(event, actFn).apply(event.target, args);
+        } catch(err) {
+          event.preventDefault(err);
+          throw err;
+        }
+      }
+    }
+    if (isSelf) {
+      event.actionResult = actionResult || event.result
     }
   } while(event.bubbles && !event.isPropagationStopped() && (event.currentTarget = getParent.call(event.currentTarget)))
   return event.result;
@@ -126,6 +112,21 @@ function invokeHandler(event, args) {
     const ontype = `on${event.type}`;
     if (ontype && target[ontype] && target[ontype].apply) {
       event.result = wrapEvent(event, target[ontype]).call(target, event, ...args);
+    }
+    if (event.result === false) {
+      event.preventDefault();
+    }
+    const isSelf = event.currentTarget === event.target;
+    let actionResult;
+    if (!event.onlyHandlers && (isSelf || event.invokeBubblesAction)) {
+      const ontype = `on${event.type}`;
+      let actFn = getAction.call(event.target, event);
+      if (!event.isDefaultPrevented() && ontype && actFn) {
+        actionResult = wrapEvent(event, actFn).apply(event.target, args);
+      }
+    }
+    if (isSelf) {
+      event.actionResult = actionResult || event.result
     }
   } while(event.bubbles && !event.isPropagationStopped() && (event.currentTarget = getParent.call(event.currentTarget)))
   return event.result;
@@ -165,6 +166,8 @@ const defaultEventInit = {
   cancelable: true,
   // 只触发handler而不触发默认行为
   onlyHandlers: false,
+  // 是否沿途调用对应的行为
+  invokeBubblesAction: false,
   // 允许handler异步，handler会依次执行
   async: false
 }
@@ -303,7 +306,18 @@ export default class Event {
    * @param {function} handler 绑定的处理器
    */
 
-  static add(target, handlerObj, handler) {
+  static add(target, handlerObj, selector, handler) {
+    if (typeof selector === 'function') {
+      handler = selector;
+      selector = null;
+    } else {
+      const oldHandler = handler
+      handler = function(e, ...args) {
+        if (this.matchSelector(selector, e.target)) {
+          return oldHandler.call(this, e, ...args)
+        }
+      }
+    }
     if (typeof handlerObj === 'string') {
       handlerObj = {
         type: handlerObj,
