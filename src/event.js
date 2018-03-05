@@ -147,13 +147,10 @@ function dispatch(proxy, target, event, args) {
 
   if (event.async) {
     return invokeAsyncHandler(event, args).then(() => {
-      return invokeAsyncAction(event, args)
-    }).then(() => {
       return event[proxy]
     })
   } else {
     invokeHandler(event, args);
-    invokeAction(event, args);
     return event[proxy];
   }
 }
