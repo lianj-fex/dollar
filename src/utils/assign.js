@@ -60,9 +60,10 @@ export default function assign(target, source, options) {
         }
 
         if (ignore.indexOf(key) !== -1) return;
-        if (value === undefined && clearWhenUndefined) {
+        const ownKey = $own(obj, key);
+        if (ownKey && value === undefined && clearWhenUndefined) {
           delete obj[key];
-        } else if (!options.ignoreExist || ($own(obj, key) && options.ignoreExist)) {
+        } else if (!options.ignoreExist || (ownKey && options.ignoreExist)) {
           if ($isArrayLike(obj) && deep && reflect && concatArrWhenReflect) {
             key = $int(key);
             if (!$isArrayLike(value)) {
@@ -92,7 +93,7 @@ export default function assign(target, source, options) {
             } else {
               optionAssign(obj, key, value);
             }
-          } else if (value !== undefined) {
+          } else {
             optionAssign(obj, key, value);
           }
         }
