@@ -22,8 +22,8 @@ function assume(i, value, add, nullValue, deep) {
     add(i, JSON.stringify(value));
   } else if (value === null) {
     add(i, value === nullValue ? '' : value);
-  } else if (value === undefined) {
-    add(i, undefined)
+  } else {
+    add(i, value)
   }
 }
 
