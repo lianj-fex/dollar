@@ -26,6 +26,9 @@ function isFormData(data) {
 function isBlob(s) {
   return global.Blob && Blob.prototype.isPrototypeOf(s);
 }
+function isArrayBuffer(s) {
+  return global.ArrayBuffer && (s instanceof ArrayBuffer)
+}
 function xmlParse(txt) {
   if (window.DOMParser) {
     return (new DOMParser()).parseFromString(txt, "text/xml");
@@ -124,8 +127,7 @@ class Request extends EventEmitter {
   }
 
   constructor(...args) {
-    super();
-    this.config(...args);
+    super(...args);
     methods.forEach((method) => {
       this[method] = (...args) => this.send(method, ...args);
     });
@@ -216,26 +218,33 @@ class Request extends EventEmitter {
 
       let body = options.body;
       const isFD = isFormData(body);
-      if (typeof body !== 'string' && !isBlob(body) && !isFD) {
+      const isBD = isBlob(body);
+      const isAB = isArrayBuffer(body);
+      if (typeof body !== 'string' && !isBD && !isFD && !isAB) {
         body = this.serialize(options.body);
       }
-
+      let typeContentType = undefined
       if (typeof body === 'string' && body) {
         if (isJSON(body)) {
-          options.headers['Content-type'] = 'application/json';
+          typeContentType = 'application/json';
         } else if (isUrlEncoded(body)) {
-          options.headers['Content-type'] = 'application/x-www-form-urlencoded';
+          typeContentType = 'application/x-www-form-urlencoded';
         } else {
-          options.headers['Content-type'] = 'text/plain';
+          typeContentType = 'text/plain';
         }
       }
+      if (isBD || isAB) {
+        typeContentType = body.type || 'application/octect-stream'
+      }
+      options.headers['Content-Type'] = options.headers['Content-Type'] || typeContentType
 
       if (!isFD) {
         $each(options.headers, (key, value) => {
-          xhr.setRequestHeader(key, value);
+          if (value != undefined) {
+            xhr.setRequestHeader(key, value);
+          }
         });
       }
-
       try {
         xhr.send(body);
       } catch(e) {

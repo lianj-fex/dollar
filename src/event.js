@@ -73,6 +73,7 @@ async function invokeAsyncHandler(event, args) {
         try {
           actionResult = await wrapEvent(event, actFn).apply(event.target, args);
         } catch(err) {
+          console.error(err);
           event.preventDefault(err);
           throw err;
         }
@@ -122,7 +123,13 @@ function invokeHandler(event, args) {
       const ontype = `on${event.type}`;
       let actFn = getAction.call(event.target, event);
       if (!event.isDefaultPrevented() && ontype && actFn) {
-        actionResult = wrapEvent(event, actFn).apply(event.target, args);
+        try {
+          actionResult = wrapEvent(event, actFn).apply(event.target, args);
+        } catch(err) {
+          console.error(err);
+          event.preventDefault(err);
+          throw err;
+        }
       }
     }
     if (isSelf) {

@@ -114,7 +114,6 @@ export default class Cookie extends EventEmitter {
 
   constructor(options) {
     super(options);
-    this.config(options);
   }
 
   /**

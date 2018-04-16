@@ -35,15 +35,22 @@ export default class Timer extends EventEmitter {
    * @param {number} options.limit 进度生成次数限制，超过这个次数，定时器将会停止
    * @param {function} options.callback 成功后绑定的成功时间
    */
-  constructor({timeout = Infinity, interval = 200, limit = Infinity, callback }) {
-    super();
+  static mixOptions = {
+    timeout: Infinity,
+    interval: 200,
+    limit: Infinity,
+    callback: undefined
+  }
+  constructor(...args) {
+    super(...args);
+    const options = this.options
     this.pass = 0;
-    this.timeout = this.total = timeout;
+    this.timeout = this.total = options.timeout;
     this.tickNum = 0;
-    this.limit = limit;
-    this.interval = interval;
-    if (typeof callback === 'function') {
-      this.onfinish = callback;
+    this.limit = options.timeout;
+    this.interval = options.timeout;
+    if (typeof options.callback === 'function') {
+      this.onfinish = options.callback;
       this.trigger('start');
     }
   }
