@@ -74,10 +74,10 @@ function serialize(obj, options) {
   encode = encode === true ? encodeURIComponent : (val) => val;
   const s = [];
   function add(key, value) {
-    if (value) {
-      s.push(encode(key) + assignment + encode(value));
-    } else {
+    if (value === undefined) {
       s.push(encode(key))
+    } else {
+      s.push(encode(key) + assignment + encode(value));
     }
   }
   if (typeof obj === 'string' && obj === '' || obj == null) return '';
@@ -109,7 +109,7 @@ serialize.defaults = {
   encode: true,
   flatten: true,
   nullValue: '',
-  sort: undefined
+  sort: true
 };
 
 export default serialize;

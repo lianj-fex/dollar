@@ -207,7 +207,7 @@ class Request extends EventEmitter {
       }
 
 
-      const openParams = [options.method.toUpperCase(), url, !options.sync];
+      const openParams = [options.method, url, !options.sync];
       if (options.username) {
         openParams.push(options.username, options.password)
       }
@@ -216,37 +216,18 @@ class Request extends EventEmitter {
         xhr.timeout = options.timeout;
       }
 
-      let body = options.body;
-      const isFD = isFormData(body);
-      const isBD = isBlob(body);
-      const isAB = isArrayBuffer(body);
-      if (typeof body !== 'string' && !isBD && !isFD && !isAB) {
-        body = this.serialize(options.body);
-      }
-      let typeContentType = undefined
-      if (typeof body === 'string' && body) {
-        if (isJSON(body)) {
-          typeContentType = 'application/json';
-        } else if (isUrlEncoded(body)) {
-          typeContentType = 'application/x-www-form-urlencoded';
-        } else {
-          typeContentType = 'text/plain';
-        }
-      }
-      if (isBD || isAB) {
-        typeContentType = body.type || 'application/octect-stream'
-      }
-      options.headers['Content-Type'] = options.headers['Content-Type'] || typeContentType
+      const isFD = isFormData(options.body);
 
       if (!isFD) {
         $each(options.headers, (key, value) => {
-          if (value != undefined) {
+          if (value !== undefined) {
             xhr.setRequestHeader(key, value);
           }
         });
       }
+
       try {
-        xhr.send(body);
+        xhr.send(options.body);
       } catch(e) {
         reject(e)
       }
@@ -319,6 +300,30 @@ class Request extends EventEmitter {
     if (typeof options.headers === 'function') {
       options.headers = options.headers(options);
     }
+
+    let body = options.body;
+    const isFD = isFormData(body);
+    const isBD = isBlob(body);
+    const isAB = isArrayBuffer(body);
+    if (typeof body !== 'string' && !isBD && !isFD && !isAB) {
+      options.body = this.serialize(options.body);
+    }
+    let typeContentType = undefined;
+    const unknowType = 'application/octet-stream';
+    if (typeof body === 'string' && body) {
+      if (isJSON(body)) {
+        typeContentType = 'application/json';
+      } else if (isUrlEncoded(body)) {
+        typeContentType = 'application/x-www-form-urlencoded';
+      } else {
+        typeContentType = 'text/plain';
+      }
+    }
+    if (isBD || isAB) {
+      typeContentType = body.type
+    }
+    options.method = options.method.toUpperCase()
+    options.headers['Content-Type'] = options.headers['Content-Type'] || typeContentType || ((options.method === 'POST' || options.method === 'PUT') ? unknowType : undefined)
 
     return options;
   }
