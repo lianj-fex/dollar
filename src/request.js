@@ -137,7 +137,7 @@ class Request extends EventEmitter {
     return this.send().then(...args)
   }
   async send(...args) {
-    const options = args.length ? $extend({}, this.options, this.getConfig(...args)) : this.options;
+    const options = args.length ? $extend({}, this.options, this.args2Options(...args)) : this.options;
     const sendOptions = await this.prepare(options);
     return await this.output(await this.transport(sendOptions), sendOptions)
   }
@@ -238,9 +238,8 @@ class Request extends EventEmitter {
     this.xhr.abort();
   }
 
-  config(method, url, sendDataOrOptions, output) {
+  args2Options(method, url, sendDataOrOptions, output) {
     let tmpOptions;
-
 
     if (typeof method !== 'string') {
       output = sendDataOrOptions;
@@ -273,7 +272,11 @@ class Request extends EventEmitter {
       }, methodAndOutputAndUrl)
     }
 
-    return super.config(tmpOptions);
+    return tmpOptions;
+  }
+
+  config(...args) {
+    return super.config(this.args2Options(...args));
   }
 
   output(xhr, options) {
