@@ -42,7 +42,7 @@ export default function cacheable(fn, options) {
     options.expires = async (result) => { await result.catch(() => {}); await $delay(tmpExpires); };
   }
   return function fnResult(...args) {
-    const context = options.context || this;
+    const context = options.context || (this === null || this === undefined) ? options : this;
     const cacheKey = $is(options.key, 'function') ? options.key.call(context, fn, ...args) : options.key;
     const map = $is(options.map, 'function') ? options.map.call(context) : options.map;
     context[defaultExpiresMapSymbol] = context[defaultExpiresMapSymbol] || new Map();
@@ -86,10 +86,12 @@ cacheable.defaults = {
     return this[defaultCacheMapSymbol] = this[defaultCacheMapSymbol] || new Map();
   },
   // 获取设置清除缓存的方法
-  get(r, map) {
-    return map.get(r);
+  get(k, map) {
+    k = $isPlainObject(k) ? JSON.stringify(k) : k
+    return map.get(k);
   },
   set(k, r, map) {
+    k = $isPlainObject(k) ? JSON.stringify(k) : k
     map.set(k, r);
   },
   // 超时时，决定如何清理缓存
