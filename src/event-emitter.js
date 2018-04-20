@@ -13,11 +13,18 @@ export default class EventEmitter extends Configable {
   constructor(...args) {
     super(...args);
     this.config(...args);
-    Object.keys(this.options).forEach((key) => {
-      if (onReg.test(key) && typeof this.options[key] === 'function') {
-        this.on(key.replace(onReg, (_, $1, $2) => $2.toLowerCase()), (e, ...args) => { this.options[key].call(this, ...args) })
+  }
+
+  config(...args) {
+    const options = super.config(...args);
+    Object.keys(options).forEach((key) => {
+      if (onReg.test(key) && typeof options[key] === 'function') {
+        this[`on${key.replace(onReg, (_, $1, $2) => $2.toLowerCase())}`] = (e, ...args) => {
+          options[key].call(this, ...args)
+        }
       }
     })
+    return options;
   }
 
   on(...args) {
