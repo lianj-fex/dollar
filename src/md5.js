@@ -105,6 +105,9 @@ export default function md5(bytes) {
     }
     bytes = (new TextEncoder()).encode(bytes);
   }
+  if (bytes instanceof ArrayBuffer) {
+    bytes = new Uint8Array(bytes)
+  }
   const digest = [0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476];
   const length = [0, 0];
   const remain = bytes.length % 64;
@@ -146,6 +149,7 @@ export default function md5(bytes) {
   for ( let k = 0; k < digest.length; ++k ) {
     digest[k] = ((digest[k] << 8 | digest[k] >>> 24) & 0x00FF00FF) | ((digest[k] << 24 | digest[k] >>> 8) & 0xFF00FF00);
   }
+
 
   let hex = '';
 
