@@ -9,7 +9,6 @@ import $isPlainObject from './utils/is-plain-object';
  import $cacheable from './utils/cacheable';*/
 import XMLHttpRequest from 'xhr2';
 import EventEmitter from './event-emitter';
-
 const methods = ['get', 'post', 'delete', 'put', 'patch'];
 const type2Mime = {
   json: 'application/json',
@@ -48,6 +47,27 @@ function isUrlEncoded(string) {
 function hasKeys(obj, keys) {
   return Object.keys(obj).some((key) => !!~keys.indexOf(key))
 }
+class RequestError extends Error {
+  constructor(xhr) {
+    super()
+    this.xhr = xhr;
+    this.stack = (new Error()).stack;
+    this.name = this.constructor.name;
+  }
+  get message() {
+    return (this.xhr.response ? this.xhr.response.message : undefined) || xhr.statusText
+  }
+  get status() {
+    return this.xhr.status
+  }
+  get statusText() {
+    return this.xhr.statusText
+  }
+}
+function statusText2Code(str) {
+  return str.match(/^\d+/)[0]
+}
+
 class Request extends EventEmitter {
   static object2FormData(obj) {
     const fd = new FormData();
@@ -59,8 +79,16 @@ class Request extends EventEmitter {
     return fd;
   }
   static mixOptions = {
+    // 请求超时时的错误码，参考Cloudflare的超时错误码
+    timeoutStatus: '524 A Timeout Occurred',
+    // 用户abort时错误码，参考ngnix
+    abortStatus: '499 Client Closed Request',
+    // 用户由于网络原因中断请求导致的错误
+    networkErrorStatus: '444 No Response',
     // 超时时间
     timeout: 10000,
+    // 是否产生thenable对象
+    thenable: true,
     // 是否同步请求
     sync: false,
     // 请求地址
@@ -97,21 +125,12 @@ class Request extends EventEmitter {
     // function，传入xhr，返回转换后的xhr对象，或者类xhr对象,
     // 字符串，通过reflect反射出结果，默认返回xhr.response.data
     output: 'response',
+    // query的序列化方法
     prepare(options) {
       return Object.assign({}, this.options, options);
     },
-    error(xhr, type) {
-      let error
-      if (xhr.status == 0) {
-        error = new Error({timeout: '请求超时', error: '网络异常'}[type]);
-        error.xhr = xhr
-        return error
-      } else {
-        error = new Error(xhr.response.message);
-        error.xhr = xhr;
-        error.code = xhr.response.code;
-        return error;
-      }
+    error(xhr, options) {
+      return new RequestError(xhr)
     }
   }
   // 用于判断是options还是sendData
@@ -131,11 +150,13 @@ class Request extends EventEmitter {
     methods.forEach((method) => {
       this[method] = (...args) => this.send(method, ...args);
     });
+    if (this.options.thenable) {
+      this.then = (...args) => {
+        return this.send().then(...args)
+      }
+    }
   }
 
-  then(...args) {
-    return this.send().then(...args)
-  }
   async send(...args) {
     const options = args.length ? $extend({}, this.options, this.args2Options(...args)) : this.options;
     const sendOptions = await this.prepare(options);
@@ -157,6 +178,18 @@ class Request extends EventEmitter {
           }
         } catch(e) {}
       }
+
+      const callback = (resultXhr) => {
+        const state = this.state(resultXhr);
+        if (state === 'resolve') {
+          this.trigger('success', resultXhr);
+          resolve(resultXhr)
+        } else {
+          const error = options.error(resultXhr, options);
+          this.trigger('fail', [resultXhr, error]);
+          reject(error)
+        }
+      }
       xhr.onload = () => {
 
         const isNeedPolyFillJSON = options.type == 'json' && !xhr.responseType && !xhr.responseJSON && isJSON(xhr.responseText)
@@ -165,6 +198,7 @@ class Request extends EventEmitter {
           const json = JSON.parse(resultXhr.responseText);
           resultXhr = {
             status: resultXhr.status,
+            statusText: resultXhr.statusText,
             response: json,
             responseJSON: json,
             responseType: 'json',
@@ -173,27 +207,36 @@ class Request extends EventEmitter {
             }
           }
         }
-        resultXhr = this.convert(resultXhr, options);
 
-        const state = this.state(resultXhr);
-        if (state === 'resolve') {
-          this.trigger('success', resultXhr);
-          resolve(resultXhr)
-        } else {
-          const error = options.error(resultXhr);
-          this.trigger('fail', [resultXhr, error]);
-          reject(error)
-        }
+        resultXhr = this.convert(resultXhr, options);
+        resultXhr.originalXhr = xhr;
+        callback(resultXhr);
       };
       xhr.ontimeout = (...args) => {
-        const error = options.error(xhr, 'timeout');
-        this.trigger('fail', [xhr, error]);
-        reject(error)
+        callback({
+          statusText: options.timeoutStatus,
+          status: statusText2Code(options.timeoutStatus),
+          response: null,
+          originalXhr: xhr
+        });
+      }
+      xhr.onabort = (e) => {
+        const statusText = options.abortStatus
+        callback({
+          statusText,
+          status: statusText2Code(statusText),
+          response: null,
+          originalXhr: xhr
+        });
       }
       xhr.onerror = (e) => {
-        const error = options.error(xhr, 'error');
-        this.trigger('fail', [xhr, error]);
-        reject(error)
+        const statusText = options.networkErrorStatus
+        callback({
+          statusText,
+          status: statusText2Code(statusText),
+          response: null,
+          originalXhr: xhr
+        });
       }
       xhr.upload.onprogress = (e) => {
         this.trigger('upload', [xhr, e.loaded, e.total]);
@@ -322,7 +365,7 @@ class Request extends EventEmitter {
         typeContentType = 'text/plain';
       }
     }
-    if (isBD || isAB) {
+    if (isBD) {
       typeContentType = body.type
     }
     options.method = options.method.toUpperCase()
