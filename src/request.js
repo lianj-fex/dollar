@@ -356,11 +356,11 @@ class Request extends EventEmitter {
     const isBD = isBlob(body);
     const isAB = isArrayBuffer(body);
     if (typeof body !== 'string' && !isBD && !isFD && !isAB) {
-      options.body = this.serialize(options.body);
+      body = options.body = this.serialize(options.body);
     }
     let typeContentType = undefined;
     const unknowType = 'application/octet-stream';
-    if (typeof body === 'string' && body) {
+    if (typeof body === 'string') {
       if (isJSON(body)) {
         typeContentType = 'application/json';
       } else if (isXML(body)){
@@ -374,6 +374,7 @@ class Request extends EventEmitter {
     if (isBD) {
       typeContentType = body.type
     }
+    console.log(typeContentType, options.body)
     options.method = options.method.toUpperCase()
     options.headers['Content-Type'] = options.headers['Content-Type'] || typeContentType || ((options.method === 'POST' || options.method === 'PUT') ? unknowType : undefined)
 
