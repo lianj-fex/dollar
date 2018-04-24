@@ -44,6 +44,10 @@ function isJSON(string) {
 function isUrlEncoded(string) {
   return rUrlEncoded.test(string)
 }
+const rXml = /<[a-zA-Z0-9-]+>/
+function isXML(string) {
+  return rXml.test(string)
+}
 function hasKeys(obj, keys) {
   return Object.keys(obj).some((key) => !!~keys.indexOf(key))
 }
@@ -359,6 +363,8 @@ class Request extends EventEmitter {
     if (typeof body === 'string' && body) {
       if (isJSON(body)) {
         typeContentType = 'application/json';
+      } else if (isXML(body)){
+        typeContentType = 'application/xml'
       } else if (isUrlEncoded(body)) {
         typeContentType = 'application/x-www-form-urlencoded';
       } else {
