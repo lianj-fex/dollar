@@ -24,7 +24,7 @@ function isChange(result) {
   return !$isEmptyObject(result[0]) || !$isEmptyObject(result[1]);
 }
 
-function testAndSet(valueHash, isNew) {
+function testAndSet(valueHash, isNew, options) {
   let mix;
   const list = this.options.getCookies.call(this);
   const newValue = {};
@@ -37,7 +37,7 @@ function testAndSet(valueHash, isNew) {
       oldValue[i] = list[i];
       if (valueHash.hasOwnProperty(i)) list[i] = newValue[i] = $copy(valueHash[i]);
       else if (isNew) {
-        this.remove(i);
+        this.remove(i, options);
       }
     }
   });
@@ -151,15 +151,14 @@ export default class Cookie extends EventEmitter {
    */
   set(key, value, options) {
     let hash;
-    let isNew = true;
-    if (typeof key !== 'string') {
-      options = value;
-      hash = key;
-    } else {
-      // eslint-disable-next-line
+    let isNew;
+    if (typeof key === 'string') {
       hash = {};
       hash[key] = value;
-      isNew = value === undefined || value === null;
+    } else {
+      options = value;
+      hash = key;
+      isNew = true
     }
     // eslint-disable-next-line
     options = $mix({
@@ -171,7 +170,7 @@ export default class Cookie extends EventEmitter {
     if (options.expires instanceof Date) {
       options.expires = options.expires.toGMTString();
     }
-    const result = testAndSet.call(this, hash, isNew);
+    const result = testAndSet.call(this, hash, isNew, options);
     if (isChange(result)) {
       $forEach(result[0], (item, name) => {
         this.options.setCookie.call(this, name, item, options);
