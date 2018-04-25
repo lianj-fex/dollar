@@ -374,7 +374,6 @@ class Request extends EventEmitter {
     if (isBD) {
       typeContentType = body.type
     }
-    console.log(typeContentType, options.body)
     options.method = options.method.toUpperCase()
     options.headers['Content-Type'] = options.headers['Content-Type'] || typeContentType || ((options.method === 'POST' || options.method === 'PUT') ? unknowType : undefined)
 

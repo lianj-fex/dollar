@@ -21,14 +21,17 @@ function getAction(event) {
   return this[`_${event.type}`] || this[event.type];
 }
 
-function wrapEvent(event, fn) {
-  return function(...args) {
-    const oldEvent = this.$event;
-    this.$event = event;
-    let result = fn.call(this, ...args);
-    this.$event = oldEvent;
-    return result
+function handerRuner(target, fn, exposeEvent, event, ...args) {
+  const oldEvent = target.$event;
+  target.$event = event;
+  let result
+  if (exposeEvent) {
+    fn.call(target, event, ...args);
+  } else {
+    fn.call(target, ...args);
   }
+  target.$event = oldEvent;
+  return result
 }
 
 async function invokeAsyncHandler(event, args) {
@@ -43,12 +46,16 @@ async function invokeAsyncHandler(event, args) {
         if (typeof handler === 'function') {
           handler = {
             type: event.type,
-            handler: wrapEvent(event, handler)
+            handler: handler
           };
         }
-        const result = await handler.handler.call(target, event, ...args);
-        if (result !== undefined) {
-          event.result = result;
+        try {
+          const result = await handerRuner(target, handler.handler, event.exposeEvent, event, ...args);
+          if (result !== undefined) {
+            event.result = result;
+          }
+        } catch(e) {
+          console.error(e)
         }
         // 异步与非异步的区别
         if (event.isImmediatePropagationStopped()) {
@@ -58,7 +65,7 @@ async function invokeAsyncHandler(event, args) {
     }
     const ontype = `on${event.type}`;
     if (ontype && target[ontype] && target[ontype].apply) {
-      event.result = await wrapEvent(event, target[ontype]).call(target, event, ...args);
+      event.result = await handerRuner(target, target[ontype], true, event, ...args);
       // 异步与非异步的区别
     }
     if (event.result === false) {
@@ -71,11 +78,16 @@ async function invokeAsyncHandler(event, args) {
       let actFn = getAction.call(event.target, event);
       if (!event.isDefaultPrevented() && ontype && actFn) {
         try {
-          actionResult = await wrapEvent(event, actFn).apply(event.target, args);
+          actionResult = await handerRuner(target, actFn, false, event, ...args);
         } catch(err) {
-          console.error(err);
-          event.preventDefault(err);
-          throw err;
+          if (event.preventDefaultWhenActionError || event.throwWhenActionError) {
+            event.preventDefault(err);
+          }
+          if (event.throwWhenActionError) {
+            throw err;
+          } else {
+            console.error(err);
+          }
         }
       }
     }
@@ -98,12 +110,16 @@ function invokeHandler(event, args) {
         if (typeof handler === 'function') {
           handler = {
             type: event.type,
-            handler: wrapEvent(event, handler)
+            handler: handler
           };
         }
-        const result = handler.handler.call(target, event, ...args);
-        if (result !== undefined) {
-          event.result = result;
+        try {
+          const result = handerRuner(target, handler.handler, event.exposeEvent, event, ...args);
+          if (result !== undefined) {
+            event.result = result;
+          }
+        } catch(e) {
+          console.error(e);
         }
         if (event.isImmediatePropagationStopped()) {
           break;
@@ -112,7 +128,7 @@ function invokeHandler(event, args) {
     }
     const ontype = `on${event.type}`;
     if (ontype && target[ontype] && target[ontype].apply) {
-      event.result = wrapEvent(event, target[ontype]).call(target, event, ...args);
+      event.result = handerRuner(target, target[ontype], true, event, ...args);
     }
     if (event.result === false) {
       event.preventDefault();
@@ -124,11 +140,16 @@ function invokeHandler(event, args) {
       let actFn = getAction.call(event.target, event);
       if (!event.isDefaultPrevented() && ontype && actFn) {
         try {
-          actionResult = wrapEvent(event, actFn).apply(event.target, args);
+          actionResult = handerRuner(target, actFn, false, event, ...args);
         } catch(err) {
-          console.error(err);
-          event.preventDefault(err);
-          throw err;
+          if (event.preventDefaultWhenActionError || event.throwWhenActionError) {
+            event.preventDefault(err);
+          }
+          if (event.throwWhenActionError) {
+            throw err;
+          } else {
+            console.error(err);
+          }
         }
       }
     }
@@ -149,6 +170,8 @@ function dispatch(proxy, target, event, args) {
   if (!(event instanceof Event)) {
     event = new Event(event);
   }
+  console.log(target, target.$eventOptions)
+  Object.assign(event, target.$eventOptions || {});
   event.target = target;
   event.currentTarget = target;
 
@@ -164,6 +187,12 @@ function dispatch(proxy, target, event, args) {
 
 
 const defaultEventInit = {
+  // 当action报错时，会抛出错误并且结束程序
+  throwWhenActionError: true,
+  // 当action报错时，会阻止
+  preventDefaultWhenActionError: true,
+  // 是否在handler中暴露e
+  exposeEvent: true,
   // 是否冒泡
   bubbles: false,
   // 是否可以取消
@@ -255,6 +284,21 @@ export default class Event {
      * @type {string}
      */
     this.type = eventInit.type;
+    /**
+     * 当action报错时，会抛出错误并且结束程序
+     * @type {Boolean}
+     */
+    this.throwWhenActionError = eventInit.throwWhenActionError;
+    /**
+     * 当action报错时，会阻止
+     * @type {Boolean}
+     */
+    this.preventDefaultWhenActionError = eventInit.preventDefaultWhenActionError;
+    /**
+     * 是否在handler中暴露e
+     * @type {Boolean}
+     */
+    this.exposeEvent = eventInit.exposeEvent;
   }
   isImmediatePropagationStopped() {
     return this[isIPS];
