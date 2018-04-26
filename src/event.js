@@ -24,12 +24,7 @@ function getAction(event) {
 function handerRuner(target, fn, exposeEvent, event, ...args) {
   const oldEvent = target.$event;
   target.$event = event;
-  let result
-  if (exposeEvent) {
-    fn.call(target, event, ...args);
-  } else {
-    fn.call(target, ...args);
-  }
+  let result = exposeEvent ? fn.call(target, event, ...args) : fn.call(target, ...args);
   target.$event = oldEvent;
   return result
 }
