@@ -109,8 +109,8 @@ class Request extends EventEmitter {
       return {};
     },
     // 请求体，可以是字符串，会通过serial进行序列化
-    body: {},
-    query: {},
+    // body: undefined,
+    // query: undefined,
     /*
      // 缓存配置，请参考$cacheable
      cache: true,
@@ -135,6 +135,9 @@ class Request extends EventEmitter {
     },
     error(xhr, options) {
       return new RequestError(xhr)
+    },
+    queryStringify(query) {
+      return $serialize(query)
     }
   }
   // 用于判断是options还是sendData
@@ -346,7 +349,7 @@ class Request extends EventEmitter {
     if (typeof options.url === 'function') {
       options.url = options.url(options.params);
     }
-    options.queryString = $serialize(options.query);
+    options.queryString = this.options.queryStringify(options.query);
     if (typeof options.headers === 'function') {
       options.headers = options.headers(options);
     }
