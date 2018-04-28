@@ -7,7 +7,7 @@ import $forEach from './for-each';
 
 
 // 猜测值返回不同结果
-function assume(i, value, add, nullValue, deep) {
+function assume(i, value, add, nullValue, undefinedValue, deep) {
   deep = deep || 0;
   const isArr = $isArray(value);
   const isObject = typeof value === 'object';
@@ -18,10 +18,12 @@ function assume(i, value, add, nullValue, deep) {
       deep += 1
       assume(i, item, add, nullValue, deep);
     });
+  } else if (value === undefined) {
+    add(i, undefinedValue)
+  } else if (value === null) {
+    add(i, nullValue);
   } else if (isObject) {
     add(i, JSON.stringify(value));
-  } else if (value === null) {
-    add(i, value === nullValue ? '' : value);
   } else {
     add(i, value)
   }
@@ -37,12 +39,14 @@ function assume(i, value, add, nullValue, deep) {
  * @param {string|function} [options.join] 数组类型的合并符，默认【,】，或者是合并方法
  * @param {boolean|function} [options.sort] 排列参数的顺序默认undefined
  * @param {string} [options.nullValue] 当遇到null的情况如何处理，默认为【""】，当做字符串""
+ * @param {string} [options.includeUndefined] 转换是否包括undefined，默认为true，如果为false，则undefined的键值都会被排除
+ * @param {string} [options.undefinedValue] 当遇到undefined的情况如何处理，默认为【undefined】，会被处理为只有key的情况，例如 { a: 1, b: undefined }，会被转换为 a=1?b
  * @param {boolean} [options.encode] 是否进行编码, 默认true
  * @returns {string}
  */
 function serialize(obj, options) {
   options = $extend({}, serialize.defaults, options);
-  const { separator, assignment, nullValue } = options;
+  const { separator, assignment, nullValue, undefinedValue, includeUndefined } = options;
   let { join, flatten, encode, sort } = options;
   if (typeof join === 'string') {
     const arrSeparator = join;
@@ -75,7 +79,9 @@ function serialize(obj, options) {
   const s = [];
   function add(key, value) {
     if (value === undefined) {
-      s.push(encode(key))
+      if (includeUndefined) {
+        s.push(encode(key))
+      }
     } else {
       s.push(encode(key) + assignment + encode(value));
     }
@@ -89,11 +95,11 @@ function serialize(obj, options) {
       Object.keys(obj).sort((aKey, bKey) => {
         return sort(aKey, obj[aKey], bKey, obj[bKey])
       }).forEach((key) => {
-        assume(key, obj[key], add, nullValue);
+        assume(key, obj[key], add, nullValue, undefinedValue);
       })
     } else {
       $forEach(obj, (value, key) => {
-        assume(key, value, add, nullValue);
+        assume(key, value, add, nullValue, undefinedValue);
       });
     }
   } else {
@@ -108,6 +114,8 @@ serialize.defaults = {
   join: ',',
   encode: true,
   flatten: true,
+  includeUndefined: true,
+  undefinedValue: undefined,
   nullValue: '',
   sort: true
 };
