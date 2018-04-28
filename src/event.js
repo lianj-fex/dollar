@@ -165,7 +165,6 @@ function dispatch(proxy, target, event, args) {
   if (!(event instanceof Event)) {
     event = new Event(event);
   }
-  console.log(target, target.$eventOptions)
   Object.assign(event, target.$eventOptions || {});
   event.target = target;
   event.currentTarget = target;
