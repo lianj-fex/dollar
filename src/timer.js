@@ -47,8 +47,8 @@ export default class Timer extends EventEmitter {
     this.pass = 0;
     this.timeout = this.total = options.timeout;
     this.tickNum = 0;
-    this.limit = options.timeout;
-    this.interval = options.timeout;
+    this.limit = options.limit;
+    this.interval = options.interval;
     if (typeof options.callback === 'function') {
       this.onfinish = options.callback;
       this.trigger('start');
