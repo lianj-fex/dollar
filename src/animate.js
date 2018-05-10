@@ -1,9 +1,10 @@
+import easing from './easing';
 const defaults = {
   during: 300,
   from: 0,
   to: 1,
-  easing: x => x,
-  raf: global.requestAnimationFrame
+  easing: easing.linear,
+  raf: global.requestAnimationFrame.bind(global)
 };
 /**
  * 动画函数，指定初始值以及结束值，fn将会被依次调用
@@ -15,17 +16,18 @@ const defaults = {
  * @param {function} options.easing 动画缓动函数
  * @param {function} options.raf requestAnimationFrame函数，当然你可以自定义
  */
-export default function animate(fn, options) {
+function animate(fn, options) {
   if (typeof options === 'number') {
-    options = Object.assign({}, defaults, {
+    options = {
       during: options
-    })
+    }
   }
   if (typeof options === 'function') {
-    options = Object.assign({}, defaults, {
+    options = {
       easing: options
-    })
+    }
   }
+  options = Object.assign({}, defaults, options)
   let start;
   let end;
   function run() {
@@ -39,3 +41,8 @@ export default function animate(fn, options) {
   }
   run();
 }
+
+animate.easing = easing;
+
+
+export default animate

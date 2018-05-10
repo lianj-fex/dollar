@@ -40,5 +40,6 @@ Object.keys(easing).forEach((key) => {
   easingObj.in = easingObj.in || ((t) => 1 - easingObj.out(1 - t));
   easingObj.inOut = easingObj.inOut || ((t) => t < .5 ? easingObj.in(t * 2) / 2 : easingObj.out(t * 2 - 1) / 2 + 0.5);
 });
+easing.linear = x => x;
 
 export default easing
