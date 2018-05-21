@@ -22,7 +22,11 @@ function funderscore(m, w) {
  */
 export function camelCase(string, upper) {
   const result = string.replace(rmsPrefix, 'ms-').replace(rdashAlpha, fcamelCase);
-  return upper ? name.charAt(0).toUpperCase() + result.substr(1) : result;
+  if (upper === undefined) {
+    return result;
+  } else {
+    return result.charAt(0)[upper ? 'toUpperCase' : 'toLowerCase']() + result.substr(1)
+  }
 }
 
 /**
