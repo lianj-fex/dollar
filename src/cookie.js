@@ -8,10 +8,12 @@ import $unserialize from './utils/unserialize';
 import EventEmitter from './event-emitter';
 
 const cookieSerializeOptions = {
+  includeUndefined: false,
   separator: ';',
   flatten: false
 };
 const cookieSerializeConfigOptions = {
+  includeUndefined: false,
   separator: ';',
   encode: false,
 };
