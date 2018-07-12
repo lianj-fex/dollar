@@ -268,13 +268,11 @@ class Request extends EventEmitter {
 
       const isFD = isFormData(options.body);
 
-      if (!isFD) {
-        $each(options.headers, (key, value) => {
-          if (value !== undefined) {
-            xhr.setRequestHeader(key, value);
-          }
-        });
-      }
+      $each(options.headers, (key, value) => {
+        if ((!isFD || key !== 'Content-Type') && value !== undefined) {
+          xhr.setRequestHeader(key, value);
+        }
+      });
 
       try {
         xhr.send(options.body);

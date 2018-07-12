@@ -1,3 +1,5 @@
+// TODO: 实现waitUtil
+// https://developer.mozilla.org/en-US/docs/Web/API/ExtendableEvent/waitUntil
 import $data from './data';
 
 const isIPS = Symbol();
