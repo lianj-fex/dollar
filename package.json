@@ -1,5 +1,5 @@
 {
-  "name": "@lianj/dollar2",
+  "name": "@lianj-fex/dollar",
   "version": "0.5.15",
   "description": "一个工具库",
   "main": "dist/node/index.js",
