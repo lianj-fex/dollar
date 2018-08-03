@@ -9,16 +9,19 @@ import $isPlainObject from './utils/is-plain-object';
  import $cacheable from './utils/cacheable';*/
 import XMLHttpRequest from 'xhr2';
 import EventEmitter from './event-emitter';
+const rUrlEncoded = /[^=&]+=([^=&]+)?/
+const rXml = /<[a-zA-Z0-9-]+>/
+const unknowType = 'application/octet-stream';
 const methods = ['get', 'post', 'delete', 'put', 'patch'];
 const type2Mime = {
   json: 'application/json',
   document: 'text/xml',
   text: 'text/plain'
 }
+let isSupportJSON;
 /*
  const defaultMap = new Map();
  */
-
 function isFormData(data) {
   return global.FormData && FormData.prototype.isPrototypeOf(data);
 }
@@ -37,20 +40,19 @@ function xmlParse(txt) {
     return xmlDoc.loadXML(txt);
   }
 }
-const rUrlEncoded = /[^=&]+=([^=&]+)?/
 function isJSON(string) {
   return string.startsWith('[') && string.endsWith(']') || string.startsWith('{') && string.endsWith('}')
 }
 function isUrlEncoded(string) {
   return rUrlEncoded.test(string)
 }
-const rXml = /<[a-zA-Z0-9-]+>/
 function isXML(string) {
   return rXml.test(string)
 }
 function hasKeys(obj, keys) {
   return Object.keys(obj).some((key) => !!~keys.indexOf(key))
 }
+
 class RequestError extends Error {
   constructor(xhr) {
     super()
@@ -154,6 +156,10 @@ class Request extends EventEmitter {
 
   constructor(...args) {
     super(...args);
+    if (isSupportJSON === undefined) {
+      const xhr = new XMLHttpRequest()
+      isSupportJSON = 'responseJSON' in xhr
+    }
     methods.forEach((method) => {
       this[method] = (...args) => this.send(method, ...args);
     });
@@ -170,20 +176,47 @@ class Request extends EventEmitter {
     return await this.output(await this.transport(sendOptions), sendOptions)
   }
   async transport(options) {
+    const isNeedPolyFillJSON = options.type == 'json' && !isSupportJSON
+    const isFD = isFormData(options.body);
+
     // 创建xhr对象
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       this.xhr = xhr;
       const url = options.url + (options.queryString ? (
           (options.url.includes('?') ? '&' : '?') + options.queryString) : ''
-        );
-      if (options.type) {
-        try {
-          xhr.responseType = options.type;
-          if (xhr.overrideMimeType && type2Mime[options.type]) {
-            xhr.overrideMimeType(type2Mime[options.type])
-          }
-        } catch(e) {}
+      );
+
+      const openParams = [options.method, url, !options.sync];
+      if (options.username) {
+        openParams.push(options.username, options.password)
+      }
+      xhr.open(...openParams);
+
+
+
+      $each(options.headers, (key, value) => {
+        if ((!isFD || key !== 'Content-Type') && value !== undefined) {
+          xhr.setRequestHeader(key, value);
+        }
+      });
+
+
+      if (options.withCredentials) {
+        xhr.withCredentials = true;
+      }
+
+      if (isNeedPolyFillJSON) {
+        xhr.responseType = 'text'
+      }  else {
+        xhr.responseType = options.type;
+      }
+      if (xhr.overrideMimeType && type2Mime[options.type]) {
+        xhr.overrideMimeType(type2Mime[options.type])
+      }
+
+      if (!options.sync && options.timeout) {
+        xhr.timeout = options.timeout;
       }
 
       const callback = (resultXhr) => {
@@ -198,8 +231,6 @@ class Request extends EventEmitter {
         }
       }
       xhr.onload = () => {
-
-        const isNeedPolyFillJSON = options.type == 'json' && !xhr.responseType && !xhr.responseJSON && isJSON(xhr.responseText)
         let resultXhr = xhr;
         if (isNeedPolyFillJSON) {
           const json = JSON.parse(resultXhr.responseText);
@@ -214,7 +245,6 @@ class Request extends EventEmitter {
             }
           }
         }
-
         resultXhr = this.convert(resultXhr, options);
         resultXhr.originalXhr = xhr;
         callback(resultXhr);
@@ -251,34 +281,7 @@ class Request extends EventEmitter {
       xhr.onprogress = () => {
         this.trigger('download', xhr)
       }
-
-      if (options.withCredentials) {
-        xhr.withCredentials = true;
-      }
-
-
-      const openParams = [options.method, url, !options.sync];
-      if (options.username) {
-        openParams.push(options.username, options.password)
-      }
-      xhr.open(...openParams);
-      if (!options.sync && options.timeout) {
-        xhr.timeout = options.timeout;
-      }
-
-      const isFD = isFormData(options.body);
-
-      $each(options.headers, (key, value) => {
-        if ((!isFD || key !== 'Content-Type') && value !== undefined) {
-          xhr.setRequestHeader(key, value);
-        }
-      });
-
-      try {
-        xhr.send(options.body);
-      } catch(e) {
-        reject(e)
-      }
+      xhr.send(options.body);
     })
   }
 
@@ -352,6 +355,7 @@ class Request extends EventEmitter {
       options.headers = options.headers(options);
     }
 
+    options.type = options.type.toLowerCase()
     let body = options.body;
     const isFD = isFormData(body);
     const isBD = isBlob(body);
@@ -360,7 +364,6 @@ class Request extends EventEmitter {
       body = options.body = this.serialize(options.body);
     }
     let typeContentType = undefined;
-    const unknowType = 'application/octet-stream';
     if (typeof body === 'string') {
       if (isJSON(body)) {
         typeContentType = 'application/json';
