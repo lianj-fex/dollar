@@ -1,6 +1,6 @@
 {
   "name": "@lianj-fex/dollar",
-  "version": "0.5.17",
+  "version": "0.5.18",
   "description": "一个工具库",
   "main": "dist/node/index.js",
   "browser": "dist/web/index.js",
