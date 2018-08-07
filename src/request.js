@@ -19,6 +19,7 @@ const type2Mime = {
   text: 'text/plain'
 }
 let isSupportJSON;
+let isSupportXmlInnerHtml;
 /*
  const defaultMap = new Map();
  */
@@ -176,7 +177,6 @@ class Request extends EventEmitter {
     return await this.output(await this.transport(sendOptions), sendOptions)
   }
   async transport(options) {
-    const isNeedPolyFillJSON = options.type == 'json' && !isSupportJSON
     const isFD = isFormData(options.body);
 
     // 创建xhr对象
@@ -206,7 +206,7 @@ class Request extends EventEmitter {
         xhr.withCredentials = true;
       }
 
-      if (isNeedPolyFillJSON) {
+      if (options.type == 'json' && isSupportJSON === false || options.type == 'document' && isSupportXmlInnerHtml === false) {
         xhr.responseType = 'text'
       }  else {
         xhr.responseType = options.type;
@@ -231,6 +231,14 @@ class Request extends EventEmitter {
         }
       }
       xhr.onload = () => {
+        const isCheckPolyFillDocument = xhr.responseType === 'document' && xhr.response && xhr.response.getElementsByTagName('*')[0] ;
+        if (isCheckPolyFillDocument && isSupportXmlInnerHtml === undefined) {
+          isSupportXmlInnerHtml = !!xhr.response.getElementsByTagName('*')[0].innerHTML;
+        }
+
+        const isNeedPolyFillJSON = options.type == 'json' && isSupportJSON === false
+        const isNeedPolyFillDocument = options.type == 'document' && !isSupportXmlInnerHtml
+
         let resultXhr = xhr;
         if (isNeedPolyFillJSON) {
           const json = JSON.parse(resultXhr.responseText);
@@ -240,6 +248,28 @@ class Request extends EventEmitter {
             response: json,
             responseJSON: json,
             responseType: 'json',
+            getResponseHeader(...args) {
+              return xhr.getResponseHeader(...args)
+            }
+          }
+        }
+        if (isNeedPolyFillDocument) {
+          let responseText
+          if (resultXhr.responseType === 'document') {
+            const serializer = new XMLSerializer();
+            responseText = serializer.serializeToString(resultXhr.responseXML).replace(/<([^ ]+)(.?)\/>/g, '<$1$2></$1>');
+          } else {
+            responseText = resultXhr.responseText;
+          }
+          const wrapper = document.createElement('xml');
+          wrapper.innerHTML = responseText;
+          const response = wrapper;
+          resultXhr = {
+            status: resultXhr.status,
+            statusText: resultXhr.statusText,
+            responseXML: response,
+            response,
+            responseType: 'document',
             getResponseHeader(...args) {
               return xhr.getResponseHeader(...args)
             }
