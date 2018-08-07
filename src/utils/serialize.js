@@ -59,7 +59,7 @@ function serialize(obj, options) {
     };
   }
   if (sort === true) {
-    sort = (aKey, a, bKey, b) => aKey > bKey
+    sort = (aKey, a, bKey, b) => aKey > bKey ? 1 : -1
   }
   if (flatten === true) {
     flatten = (obj) => $flatten(obj, true, true, false, true);
