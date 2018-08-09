@@ -206,7 +206,7 @@ class Request extends EventEmitter {
         xhr.withCredentials = true;
       }
 
-      if (options.type == 'json' && isSupportJSON === false || options.type == 'document' && isSupportXmlInnerHtml === false) {
+      if (options.type === 'json' && isSupportJSON === false || options.type === 'document' && isSupportXmlInnerHtml === false) {
         xhr.responseType = 'text'
       }  else {
         xhr.responseType = options.type;
@@ -236,8 +236,8 @@ class Request extends EventEmitter {
           isSupportXmlInnerHtml = !!xhr.response.getElementsByTagName('*')[0].innerHTML;
         }
 
-        const isNeedPolyFillJSON = options.type == 'json' && isSupportJSON === false
-        const isNeedPolyFillDocument = options.type == 'document' && !isSupportXmlInnerHtml
+        const isNeedPolyFillJSON = options.type === 'json' && isSupportJSON === false
+        const isNeedPolyFillDocument = options.type === 'document' && !!xhr.response && !isSupportXmlInnerHtml
 
         let resultXhr = xhr;
         if (isNeedPolyFillJSON) {
