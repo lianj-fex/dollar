@@ -104,7 +104,7 @@ class Request extends EventEmitter {
     // const request = new Request((new Path('/users/profile/:id<\d+>')).build);
     // request.send({params: {id: 1}});
     // request.send({params: {id: 2}});
-    url: '',
+    url({ base, path }) { return `${base ? base : ''}${path}`},
     params: {},
     // 请求头，默认为对象，会插入到请求头
     // 可以是function，则先运行，再按上述执行
@@ -340,7 +340,13 @@ class Request extends EventEmitter {
       methodAndOutputAndUrl.method = method
     }
     if (url) {
-      methodAndOutputAndUrl.url = url;
+      if (typeof url === 'function') {
+        methodAndOutputAndUrl.url = url;
+      } else {
+        methodAndOutputAndUrl.params = {
+          path: url
+        }
+      }
     }
     if (output) {
       methodAndOutputAndUrl.output = output
