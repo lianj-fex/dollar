@@ -28,7 +28,7 @@ function isChange(result) {
 
 function testAndSet(valueHash, isNew, options) {
   let mix;
-  const list = this.options.getCookies.call(this);
+  const list = options.getCookies.call(this, options);
   const newValue = {};
   const oldValue = {};
   if (isNew) mix = $mix({}, valueHash, list);
@@ -68,11 +68,11 @@ export default class Cookie extends EventEmitter {
    */
   static mixOptions = isBrowser ? {
     context: global,
-    getCookies() {
-      return $unserialize(this.options.context.document.cookie, cookieSerializeOptions);
+    getCookies(options) {
+      return $unserialize(options.context.document.cookie, cookieSerializeOptions);
     },
     setCookie(name, item, options) {
-      this.options.context.document.cookie =
+      options.context.document.cookie =
         `${
           $serialize({ [name]: item }, cookieSerializeOptions)
           }; ${
@@ -86,7 +86,7 @@ export default class Cookie extends EventEmitter {
     removeCookies(keys, options) {
       keys = $toHash(keys, 'delete');
 
-      this.options.context.document.cookie = $serialize(keys, cookieSerializeOptions) + '; ' + $serialize({
+      options.context.document.cookie = $serialize(keys, cookieSerializeOptions) + '; ' + $serialize({
           domain: options.domain,
           path: options.path,
           expires: (new Date(new Date() - 1)).toUTCString()
@@ -99,15 +99,15 @@ export default class Cookie extends EventEmitter {
       response
     },
     */
-    getCookies() {
-      return $unserialize(this.options.context.request.headers.cookie, cookieSerializeOptions);
+    getCookies(options) {
+      return $unserialize(options.context.request.headers.cookie, cookieSerializeOptions);
     },
     setCookie(name, item, options) {
-      this.options.context.response.cookie(name, item, options);
+      options.context.response.cookie(name, item, options);
     },
     removeCookies(key){
       key.forEach((name) => {
-        this.options.context.response.cookie(name, '', {
+        options.context.response.cookie(name, '', {
           expires: (new Date(new Date() - 1))
         });
       });
@@ -121,11 +121,12 @@ export default class Cookie extends EventEmitter {
   /**
    * 获取cookie
    * @param {string} [key] cookie的键 也可以为空，为空时，获取整个cookie
+   * @param {Object} [options] 用于覆盖cookie配置
    * @returns {*}
    */
-  get(key) {
-    // 先备份一下，以免被误改
-    const list = this.options.getCookies.call(this, this.options);
+  get(key, options) {
+    options = Object.assign({}, this.options, options || {})
+    const list = options.getCookies.call(this, options);
     if (key) {
       return list[key];
     }
@@ -163,9 +164,9 @@ export default class Cookie extends EventEmitter {
       isNew = true
     }
     // eslint-disable-next-line
-    options = $mix({
+    options = Object.assign({
       path: '/'
-    }, options);
+    }, this.options, options || {});
     if (typeof options.expires === 'number') {
       options.expires = new Date(Date.now() + options.expires);
     }
@@ -175,7 +176,7 @@ export default class Cookie extends EventEmitter {
     const result = testAndSet.call(this, hash, isNew, options);
     if (isChange(result)) {
       $forEach(result[0], (item, name) => {
-        this.options.setCookie.call(this, name, item, options);
+        options.setCookie.call(this, name, item, options);
       });
     }
   }
@@ -188,6 +189,7 @@ export default class Cookie extends EventEmitter {
    *  cookie.remove(['my-cookie1', 'my-cookie2'])
    */
   remove(keys, options) {
+    options = Object.assign({}, this.options, options || {})
     if (typeof keys === 'string') {
       keys = [keys];
     }
