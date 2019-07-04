@@ -86,6 +86,8 @@ class Request extends EventEmitter {
     return fd;
   }
   static mixOptions = {
+    // 请求时尝试从body里提出content-type并添加到headers
+    sendContentType: true,
     // 请求超时时的错误码，参考Cloudflare的超时错误码
     timeoutStatus: '524 A Timeout Occurred',
     // 用户abort时错误码，参考ngnix
@@ -130,7 +132,7 @@ class Request extends EventEmitter {
     type: 'json',
     // 输出方法，返回转换的结果作为Promise的结果
     // function，传入xhr，返回转换后的xhr对象，或者类xhr对象,
-    // 字符串，通过reflect反射出结果，默认返回xhr.response.data
+    // 字符串，通过reflect反射出结果，默认返回xhr.response
     output: 'response',
     // query的序列化方法
     prepare(options) {
@@ -355,7 +357,7 @@ class Request extends EventEmitter {
       tmpOptions = $extend({}, sendDataOrOptions, methodAndOutputAndUrl)
     } else {
       tmpOptions = $extend({
-        [method.toLowerCase() === 'get' ? 'query' : 'body']: sendDataOrOptions
+        data: sendDataOrOptions
       }, methodAndOutputAndUrl)
     }
 
@@ -386,10 +388,24 @@ class Request extends EventEmitter {
     if (typeof options.url === 'function') {
       options.url = options.url(options.params);
     }
-    options.queryString = this.options.queryStringify(options.query);
+    
     if (typeof options.headers === 'function') {
       options.headers = options.headers(options);
     }
+
+    options.method = options.method.toUpperCase()
+
+    if (options.method === 'GET') {
+      if (!options.query) {
+        options.query = options.data
+      }
+    } else {
+      if (!options.body) {
+        options.body = options.data
+      }
+    }
+
+    options.queryString = this.options.queryStringify(options.query);
 
     options.type = options.type.toLowerCase()
     let body = options.body;
@@ -414,8 +430,9 @@ class Request extends EventEmitter {
     if (isBD) {
       typeContentType = body.type
     }
-    options.method = options.method.toUpperCase()
-    options.headers['Content-Type'] = options.headers['Content-Type'] || typeContentType || ((options.method === 'POST' || options.method === 'PUT') ? unknowType : undefined)
+    if (options.sendContentType) {
+      options.headers['Content-Type'] = options.headers['Content-Type'] || typeContentType || ((options.method === 'POST' || options.method === 'PUT') ? unknowType : undefined)
+    }
 
     return options;
   }
