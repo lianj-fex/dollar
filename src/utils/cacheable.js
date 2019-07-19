@@ -14,7 +14,7 @@ const defaultExpiresMapSymbol = Symbol();
  *     number 设置n毫秒后清除缓存<br>
  *     date 设置某个时间清除缓存<br>
  *     function 返回一个promise决定超时时机
- * @param {boolean} options.abortExpires 是否在再次调用的时候重新生成expires，并跳过之前的expires<br>
+ * @param {boolean} options.abortExpires 是否在再次调用的时候更新生成expires，并跳过之前的expires<br>
  * @param {object|function} options.obstruction 如果缓存结果，则是否阻塞<br>
  *     false 不阻塞，将返回上一次的结果<br>
  *     object 阻塞，则抛出该对象<br>
@@ -43,11 +43,12 @@ export default function cacheable(fn, options) {
   }
   return function fnResult(...args) {
     const context = options.context || (this === null || this === undefined) ? options : this;
-    const cacheKey = $is(options.key, 'function') ? options.key.call(context, fn, ...args) : options.key;
-    const map = $is(options.map, 'function') ? options.map.call(context) : options.map;
-    context[defaultExpiresMapSymbol] = context[defaultExpiresMapSymbol] || new Map();
-    let cacheExpires = context[defaultExpiresMapSymbol].get(cacheKey);
-    let cacheItem = options.get.call(context, cacheKey, map);
+    const cacheContext = options.cacheContext || context
+    const cacheKey = $is(options.key, 'function') ? options.key.call(cacheContext, fn, ...args) : options.key;
+    const map = $is(options.map, 'function') ? options.map.call(cacheContext) : options.map;
+    cacheContext[defaultExpiresMapSymbol] = cacheContext[defaultExpiresMapSymbol] || new Map();
+    let cacheExpires = cacheContext[defaultExpiresMapSymbol].get(cacheKey);
+    let cacheItem = options.get.call(cacheContext, cacheKey, map);
     if (options.abortExpires && cacheExpires) {
       cacheExpires.isAbort = true;
       cacheExpires = undefined;
@@ -59,23 +60,24 @@ export default function cacheable(fn, options) {
       }
     } else {
       cacheItem = fn.call(this, ...args);
-      options.set.call(context, cacheKey, cacheItem, map);
+      options.set.call(cacheContext, cacheKey, cacheItem, map);
     }
     if (!cacheExpires) {
-      cacheExpires = options.expires.call(context, cacheItem);
+      cacheExpires = options.expires.call(cacheContext, cacheItem);
       cacheExpires.then(() => {
         if (!cacheExpires.isAbort) {
-          options.remove.call(context, cacheKey, map, cacheItem);
-          context[defaultExpiresMapSymbol].delete(cacheKey);
+          options.remove.call(cacheContext, cacheKey, map, cacheItem);
+          cacheContext[defaultExpiresMapSymbol].delete(cacheKey);
         }
       });
-      context[defaultExpiresMapSymbol].set(cacheKey, cacheExpires);
+      cacheContext[defaultExpiresMapSymbol].set(cacheKey, cacheExpires);
     }
     return cacheItem;
   }
 }
 cacheable.defaults = {
   context: undefined,
+  // cacheContext: undefined,
   expires: result => result.catch(() => {}),
   abortExpires: false,
   obstruction: false,
