@@ -176,17 +176,38 @@ class Request extends EventEmitter {
   async send(...args) {
     const options = args.length ? $extend({}, this.options, this.args2Options(...args)) : this.options;
     const sendOptions = await this.prepare(options);
-    return await this.output(await this.transport(sendOptions), sendOptions)
+    return await this.output(await this.transport(sendOptions, {
+      onUpload(xhr, e, options) {
+        this.trigger('upload', [xhr, e.loaded, e.total])
+      },
+      onDownload(xhr, e, options) {
+        this.trigger('download', xhr)
+      },
+      onSuccess(xhr) {
+        this.trigger('success', xhr)
+      },
+      onFail(xhr, error) {
+        this.trigger('fail', [xhr, error])
+      }
+    }), sendOptions)
   }
-  async transport(options) {
+  transport(options, { onUpload, onDownload, onSuccess, onFail } = {}) {
     const isFD = isFormData(options.body);
+    let queryString = options.queryString
+    let url = options.url
+    if (typeof url === 'function') {
+      options.url = url = url(options.params);
+    }
+    if (options.query) {
+      queryString = queryString || this.options.queryStringify(options.query);
+    }
 
     // 创建xhr对象
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       this.xhr = xhr;
-      const url = options.url + (options.queryString ? (
-          (options.url.includes('?') ? '&' : '?') + options.queryString) : ''
+      url = url + (queryString ? (
+          (url.includes('?') ? '&' : '?') + queryString) : ''
       );
 
       const openParams = [options.method, url, !options.sync];
@@ -224,11 +245,11 @@ class Request extends EventEmitter {
       const callback = (resultXhr) => {
         const state = this.state(resultXhr);
         if (state === 'resolve') {
-          this.trigger('success', resultXhr);
+          onSuccess && onSuccess(resultXhr)
           resolve(resultXhr)
         } else {
           const error = options.error(resultXhr, options);
-          this.trigger('fail', [resultXhr, error]);
+          onFail && onFail(resultXhr, error)
           reject(error)
         }
       }
@@ -308,14 +329,15 @@ class Request extends EventEmitter {
         });
       }
       xhr.upload.onprogress = (e) => {
-        this.trigger('upload', [xhr, e.loaded, e.total]);
+        onUpload && onUpload(e, xhr, options)
       };
-      xhr.onprogress = () => {
-        this.trigger('download', xhr)
+      xhr.onprogress = (e) => {
+        onDownload && onDownload(e, xhr, options)
       }
       xhr.send(options.body);
     })
   }
+
 
   abort() {
     this.xhr.abort();
@@ -374,7 +396,7 @@ class Request extends EventEmitter {
       const outputStr = options.output
       outputFn = (xhr) => $reflectVal(xhr, outputStr)
     }
-    return outputFn ? outputFn(xhr) : xhr
+    return outputFn ? outputFn(xhr, options) : xhr
   }
 
   // 发送前options的处理方法
@@ -384,9 +406,6 @@ class Request extends EventEmitter {
     if (global.location && !options.url) {
       options.url = global.location.pathname;
       options.query = $mix($unserialize(global.location.search.replace('?', '')), options.query);
-    }
-    if (typeof options.url === 'function') {
-      options.url = options.url(options.params);
     }
     
     if (typeof options.headers === 'function') {
@@ -404,8 +423,6 @@ class Request extends EventEmitter {
         options.body = options.data
       }
     }
-
-    options.queryString = this.options.queryStringify(options.query);
 
     options.type = options.type.toLowerCase()
     let body = options.body;
