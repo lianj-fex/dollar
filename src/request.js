@@ -167,9 +167,11 @@ class Request extends EventEmitter {
       this[method] = (...args) => this.send(method, ...args);
     });
     if (this.options.thenable) {
-      this.then = (...args) => {
-        return this.send().then(...args)
-      }
+      ['then', 'catch'].forEach(fnName => {
+        this[fnName] = (...args) => {
+          return this.send()[fnName](...args)
+        }
+      })
     }
   }
 
@@ -192,18 +194,21 @@ class Request extends EventEmitter {
     }), sendOptions)
   }
   transport(options, { onUpload, onDownload, onSuccess, onFail } = {}) {
-    const isFD = isFormData(options.body);
-    let queryString = options.queryString
-    let url = options.url
-    if (typeof url === 'function') {
-      options.url = url = url(options.params);
-    }
-    if (options.query) {
-      queryString = queryString || this.options.queryStringify(options.query);
-    }
+
 
     // 创建xhr对象
     return new Promise((resolve, reject) => {
+
+      const isFD = isFormData(options.body);
+      let queryString = options.queryString
+      let url = options.url
+      if (typeof url === 'function') {
+        options.url = url = url(options.params);
+      }
+      if (options.query) {
+        queryString = queryString || this.options.queryStringify(options.query);
+      }
+
       const xhr = new XMLHttpRequest();
       this.xhr = xhr;
       url = url + (queryString ? (
