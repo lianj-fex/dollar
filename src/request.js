@@ -58,7 +58,6 @@ class RequestError extends Error {
   constructor(xhr) {
     super()
     this.xhr = xhr;
-    this.stack = (new Error()).stack;
     this.name = this.constructor.name;
   }
   get message() {
@@ -334,10 +333,10 @@ class Request extends EventEmitter {
         });
       }
       xhr.upload.onprogress = (e) => {
-        onUpload && onUpload(e, xhr, options)
+        onUpload && onUpload(xhr, e, options)
       };
       xhr.onprogress = (e) => {
-        onDownload && onDownload(e, xhr, options)
+        onDownload && onDownload(xhr, e, options)
       }
       xhr.send(options.body);
     })
