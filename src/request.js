@@ -179,16 +179,16 @@ class Request extends EventEmitter {
     const options = args.length ? $extend({}, this.options, this.args2Options(...args)) : this.options;
     const sendOptions = await this.prepare(options);
     return await this.output(await this.transport(sendOptions, {
-      onUpload(xhr, e, options) {
+      onUpload: (xhr, e, options) => {
         this.trigger('upload', [xhr, e.loaded, e.total])
       },
-      onDownload(xhr, e, options) {
+      onDownload: (xhr, e, options) => {
         this.trigger('download', xhr)
       },
-      onSuccess(xhr) {
+      onSuccess: (xhr) => {
         this.trigger('success', xhr)
       },
-      onFail(xhr, error) {
+      onFail: (xhr, error) => {
         this.trigger('fail', [xhr, error])
       }
     }), sendOptions)
