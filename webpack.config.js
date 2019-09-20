@@ -45,6 +45,9 @@ let baseConfig = {
 
 module.exports = [merge(baseConfig, {
   target: 'web',
+  output: {
+    libraryTarget: 'commonjs2'
+  },
   entry: {
     '/web/index': './src/entry/web',
     '/web/emoji': './src/entry/web/emoji'

@@ -1,7 +1,7 @@
 import $each from './utils/each';
 import $hasOwn from './utils/has-own';
 import * as utils from './utils/index';
-import $factory from './factory';
+import factory from './factory';
 import Event from './event';
 import EventEmitter from './event-emitter';
 import XhrRequest from './request';
@@ -21,11 +21,12 @@ if (!$hasOwn($, 'Event')) {
   $.Event = Event;
 }
 $.data = data;
-$.factory = $factory;
+$.factory = factory;
 $.EventEmitter = EventEmitter;
 $.XhrRequest = XhrRequest;
 $.Cookie = Cookie;
 $.cookie = new Cookie();
+
 
 /*
 $.Emoji = Emoji;
@@ -40,4 +41,5 @@ if ($.fn) {
 }
 */
 
+export { utils, Event, data, factory, EventEmitter, XhrRequest, Cookie }
 export default $;
