@@ -7,6 +7,7 @@ import EventEmitter from './event-emitter';
 import XhrRequest from './request';
 import Cookie from './cookie';
 import data from './data';
+import md5 from './md5';
 /*
 import Emoji from './emoji';
 */
@@ -26,7 +27,7 @@ $.EventEmitter = EventEmitter;
 $.XhrRequest = XhrRequest;
 $.Cookie = Cookie;
 $.cookie = new Cookie();
-
+$.md5 = md5;
 
 /*
 $.Emoji = Emoji;
@@ -41,5 +42,5 @@ if ($.fn) {
 }
 */
 
-export { utils, Event, data, factory, EventEmitter, XhrRequest, Cookie }
+export { utils, Event, data, factory, EventEmitter, XhrRequest, Cookie, md5 }
 export default $;
